@@ -44,20 +44,23 @@ jobs:
         if: steps.check_changes.outputs.changes == 'true'
         id: versioning
         run: |
-          # Extract current version, handle if it doesn't match vX format
-          CURRENT_VER=$(grep "## Version:" BotaTools.toc | cut -d' ' -f3)
-          if [[ $CURRENT_VER =~ ^v([0-9]+)$ ]]; then
+          # Robust extraction: look for line starting with ## Version: and grab the value
+          RAW_VER=$(grep "^## Version:" BotaTools.toc | sed -E 's/## Version:[[:space:]]*//' | xargs)
+          echo "Current raw version: '$RAW_VER'"
+          
+          if [[ $RAW_VER =~ ^v?([0-9]+)$ ]]; then
             VER_NUM=${BASH_REMATCH[1]}
             NEW_VER="v$((VER_NUM + 1))"
           else
+            echo "Warning: Could not parse version '$RAW_VER'. Defaulting to v1."
             NEW_VER="v1"
           fi
           
-          # Update TOC file
-          sed -i "s/## Version: .*/## Version: $NEW_VER/" BotaTools.toc
+          # Update TOC file using regex to handle spacing variations
+          sed -i -E "s/^## Version:[[:space:]]*.*/## Version: $NEW_VER/" BotaTools.toc
           
           echo "new_version=$NEW_VER" >> $GITHUB_OUTPUT
-          echo "Updated to version $NEW_VER"
+          echo "Successfully updated version to $NEW_VER"
 
       - name: Commit and Push
         if: steps.check_changes.outputs.changes == 'true'
@@ -71,16 +74,23 @@ jobs:
       - name: Package Addon
         if: steps.check_changes.outputs.changes == 'true'
         run: |
+          # Use the new version in the zip filename
+          ZIP_NAME="BotaTools-${{ steps.versioning.outputs.new_version }}.zip"
           mkdir BotaTools
           cp *.lua *.toc BotaTools/
           cp -r lib BotaTools/
-          zip -r BotaTools-${{ steps.versioning.outputs.new_version }}.zip BotaTools/
+          zip -r "$ZIP_NAME" BotaTools/
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
 
       - name: Create Release
         if: steps.check_changes.outputs.changes == 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.versioning.outputs.new_version }}
           name: Release ${{ steps.versioning.outputs.new_version }}
-          body: "Automated update of eating lines from Google Sheets."
+          body: |
+            ## Automated Update
+            - Updated eating lines from Google Sheets.
+            - Incremented version to ${{ steps.versioning.outputs.new_version }}.
           files: BotaTools-${{ steps.versioning.outputs.new_version }}.zip
+          generate_release_notes: true
