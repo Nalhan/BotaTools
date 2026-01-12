@@ -150,8 +150,7 @@ addonTable.OfficialLines = {
     { text = "I fingered my bink", weight = 10 },
     { text = "Zeps, Time Spiral!", weight = 10 },
     { text = "The whole gallon of milk!", weight = 10 },
-    { text = "Does anyone have questions about the fight?", weight = 69 },
+    { text = "Does anyone have questions about the fight?", weight = 12 },
     { text = "Zeps, buff!", weight = 32 },
-    { text = "github test bud", weight = 38 },
-    { text = "v3.14159", weight = 8 },
+    { text = "suck 'em down", weight = 12 },
 }

@@ -2,7 +2,7 @@
 ## Title: BotaTools
 ## Notes: A collection of tools for the bota
 ## Author: Bota
-## Version: v3
+## Version: v4
 ## SavedVariables: BotaToolsDB
 
 lib/LibStub/LibStub.lua
