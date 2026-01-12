@@ -1,8 +1,8 @@
 name: Update Eating Lines
 
 on:
-  schedule:
-    - cron: '0 0 * * *' # Run daily at midnight UTC
+  repository_dispatch:
+    types: [update-lines]
   workflow_dispatch:
 
 permissions:
@@ -74,7 +74,7 @@ jobs:
           mkdir BotaTools
           cp *.lua *.toc BotaTools/
           cp -r lib BotaTools/
-          zip -r BotaTools.zip BotaTools/
+          zip -r BotaTools-${{ steps.versioning.outputs.new_version }}.zip BotaTools/
 
       - name: Create Release
         if: steps.check_changes.outputs.changes == 'true'
@@ -83,4 +83,4 @@ jobs:
           tag_name: ${{ steps.versioning.outputs.new_version }}
           name: Release ${{ steps.versioning.outputs.new_version }}
           body: "Automated update of eating lines from Google Sheets."
-          files: BotaTools.zip
+          files: BotaTools-${{ steps.versioning.outputs.new_version }}.zip
