@@ -133,7 +133,7 @@ addonTable.OfficialLines = {
     { text = "You were under my Weakaura...", weight = 10 },
     { text = "It's the legendary 4p Fire Mage!", weight = 10 },
     { text = "That's crazy comms!", weight = 10 },
-    { text = "That's BANNED!", weight = 10 },
+    { text = "That's BAINED!", weight = 10 },
     { text = "X goes to Diamond", weight = 10 },
     { text = "DPS?", weight = 10 },
     { text = "Tank?", weight = 10 },
@@ -150,5 +150,6 @@ addonTable.OfficialLines = {
     { text = "I fingered my bink", weight = 10 },
     { text = "Zeps, Time Spiral!", weight = 10 },
     { text = "The whole gallon of milk!", weight = 10 },
-    { text = "Test this idiot", weight = 69 },
+    { text = "Does anyone have questions about the fight?", weight = 69 },
+    { text = "Zeps, buff!", weight = 32 },
 }
