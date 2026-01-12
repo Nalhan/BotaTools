@@ -40,20 +40,47 @@ jobs:
             echo "changes=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Update Version and TOC
+        if: steps.check_changes.outputs.changes == 'true'
+        id: versioning
+        run: |
+          # Extract current version, handle if it doesn't match vX format
+          CURRENT_VER=$(grep "## Version:" BotaTools.toc | cut -d' ' -f3)
+          if [[ $CURRENT_VER =~ ^v([0-9]+)$ ]]; then
+            VER_NUM=${BASH_REMATCH[1]}
+            NEW_VER="v$((VER_NUM + 1))"
+          else
+            NEW_VER="v1"
+          fi
+          
+          # Update TOC file
+          sed -i "s/## Version: .*/## Version: $NEW_VER/" BotaTools.toc
+          
+          echo "new_version=$NEW_VER" >> $GITHUB_OUTPUT
+          echo "Updated to version $NEW_VER"
+
       - name: Commit and Push
         if: steps.check_changes.outputs.changes == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add Data.lua
-          git commit -m "Update eating lines from Google Sheet [skip ci]"
+          git add Data.lua BotaTools.toc
+          git commit -m "Update eating lines and version to ${{ steps.versioning.outputs.new_version }} [skip ci]"
           git push
+
+      - name: Package Addon
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          mkdir BotaTools
+          cp *.lua *.toc BotaTools/
+          cp -r lib BotaTools/
+          zip -r BotaTools.zip BotaTools/
 
       - name: Create Release
         if: steps.check_changes.outputs.changes == 'true'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ github.run_number }}
-          name: Update ${{ github.run_number }}
+          tag_name: ${{ steps.versioning.outputs.new_version }}
+          name: Release ${{ steps.versioning.outputs.new_version }}
           body: "Automated update of eating lines from Google Sheets."
-          files: Data.lua
+          files: BotaTools.zip
