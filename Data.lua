@@ -153,4 +153,5 @@ addonTable.OfficialLines = {
     { text = "Does anyone have questions about the fight?", weight = 69 },
     { text = "Zeps, buff!", weight = 32 },
     { text = "github test bud", weight = 38 },
+    { text = "v3.14159", weight = 8 },
 }
