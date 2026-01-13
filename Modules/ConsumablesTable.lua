@@ -34,8 +34,6 @@ Methods
 -------------------------------------------------------------------------------]]
 local methods = {
     ["OnAcquire"] = function(self)
-        self:SetHeight(300) -- Default height
-        self:SetWidth(400)  -- Default width
         self:UpdateData()
     end,
 
@@ -91,13 +89,13 @@ local methods = {
             table_sort(trackedList) -- consistent order by ID
         end
 
-        local headerSize = 24
-        local xOffset = 150 -- Start after name column
+        local headerSize = 35 -- Increased from 24
+        local xOffset = 150   -- Start after name column
 
         for i, itemId in ipairs(trackedList) do
             local header = self.headers[i]
             if not header then
-                header = CreateFrame("Button", nil, self.content)
+                header = CreateFrame("Button", nil, self.frame)
                 header:SetSize(headerSize, headerSize)
                 header:SetScript("OnEnter", Header_OnEnter)
                 header:SetScript("OnLeave", Header_OnLeave)
@@ -106,10 +104,16 @@ local methods = {
                 tex:SetAllPoints()
                 header.texture = tex
 
+                -- Quality Rank Icon
+                local rankIcon = header:CreateTexture(nil, "OVERLAY")
+                rankIcon:SetSize(22, 22) -- Proportional to 24px header
+                rankIcon:SetPoint("TOPLEFT", -6, 6)
+                header.rankIcon = rankIcon
+
                 self.headers[i] = header
             end
 
-            header:SetPoint("TOPLEFT", self.content, "TOPLEFT", xOffset + (i - 1) * (headerSize + 5), 0)
+            header:SetPoint("TOPLEFT", self.frame, "TOPLEFT", xOffset + (i - 1) * (headerSize + 5), 0)
 
             local itemInfo = C_Item.GetItemInfo(itemId)
             -- if itemInfo is nil (async load), using C_Item.GetItemIconByID or waiting?
@@ -119,6 +123,16 @@ local methods = {
             local icon = GetItemIcon(itemId) or 134400
             header.texture:SetTexture(icon)
             header.itemId = itemId
+
+            -- Quality Icon Update
+            local qualityTexture = BotaTools:GetQualityTexture(itemId)
+            if qualityTexture then
+                header.rankIcon:SetAtlas(qualityTexture)
+                header.rankIcon:Show()
+            else
+                header.rankIcon:Hide()
+            end
+
             header:Show()
         end
 
@@ -132,17 +146,23 @@ local methods = {
         for p in pairs(scanResults) do table_insert(players, p) end
         table_sort(players)
 
-        local rowHeight = 20
-        local yOffset = -30 -- Below headers
+        local rowHeight = 24 -- Increased from 20
+        local yOffset = -35  -- Increased from -30
 
         for i, player in ipairs(players) do
             local row = self.rows[i]
             if not row then
-                row = CreateFrame("Frame", nil, self.content)
-                row:SetSize(self.content:GetWidth(), rowHeight)
+                row = CreateFrame("Frame", nil, self.frame)
+                row:SetSize(self.frame:GetWidth(), rowHeight)
 
-                local name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                name:SetPoint("LEFT", 0, 0)
+                -- Zebra striping
+                local tex = row:CreateTexture(nil, "BACKGROUND")
+                tex:SetAllPoints()
+                tex:SetColorTexture(1, 1, 1, 0.05) -- Faint white
+                row.bg = tex
+
+                local name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal") -- Yellow/Gold, bolder looking
+                name:SetPoint("LEFT", 5, 0)                                         -- Slight indentation
                 name:SetWidth(140)
                 name:SetJustifyH("LEFT")
                 row.name = name
@@ -151,27 +171,45 @@ local methods = {
                 self.rows[i] = row
             end
 
-            row:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, yOffset + (i - 1) * (-rowHeight))
-            row.name:SetText(player)
+            row:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 0, yOffset + (i - 1) * (-rowHeight))
+
+            local data = scanResults[player]
+            local class = data and data.class
+            local color = class and RAID_CLASS_COLORS[class]
+
+            if color then
+                row.name:SetText(string.format("|cff%02x%02x%02x%s|r", color.r * 255, color.g * 255, color.b * 255,
+                    player))
+            else
+                row.name:SetText(player)
+            end
+
+            -- Update zebra striping
+            if i % 2 == 0 then
+                row.bg:Show()
+            else
+                row.bg:Hide()
+            end
 
             -- Cells
-            local counts = scanResults[player]
             for j, itemId in ipairs(trackedList) do
                 local cell = row.cells[j]
                 if not cell then
-                    cell = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                    cell:SetWidth(headerSize)
+                    cell = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight") -- Larger white text
+                    cell:SetWidth(headerSize + 5)                                    -- Add slight buffer
                     cell:SetJustifyH("CENTER")
                     row.cells[j] = cell
                 end
 
                 cell:SetPoint("LEFT", row, "LEFT", xOffset + (j - 1) * (headerSize + 5), 0)
 
-                local count = counts[itemId] or 0
+                local items = data and data.items
+                local count = items and items[itemId] or 0
+                local formattedCount = BotaTools:FormatLargeNumber(count)
                 if count > 0 then
-                    cell:SetText("|cff00ff00" .. count .. "|r")
+                    cell:SetText("|cff00ff00" .. formattedCount .. "|r")
                 else
-                    cell:SetText("|cffff0000" .. count .. "|r")
+                    cell:SetText("|cffff0000" .. formattedCount .. "|r")
                 end
                 cell:Show()
             end
@@ -184,9 +222,9 @@ local methods = {
             row:Show()
         end
 
-        -- Adjust Content Height
-        local totalHeight = math_max(300, -yOffset + (#players * rowHeight))
-        self.content:SetHeight(totalHeight)
+        -- Adjust Height
+        local totalHeight = math_max(50, -yOffset + (#players * rowHeight))
+        self:SetHeight(totalHeight)
     end,
 }
 
@@ -197,17 +235,8 @@ local function Constructor()
     local frame = CreateFrame("Frame", nil, UIParent)
     frame:Hide()
 
-    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 0, -10)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -26, 10)
-
-    local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(400, 300)
-    scrollFrame:SetScrollChild(content)
-
     local widget = {
         frame = frame,
-        content = content,
         type = Type
     }
 

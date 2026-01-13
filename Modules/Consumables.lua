@@ -42,7 +42,13 @@ function Consumables:SendStatus(distribution, target)
         end
     end
 
-    local serialized = self:Serialize("RESP_STATUS", results)
+    local _, class = UnitClass("player")
+    local data = {
+        class = class,
+        items = results
+    }
+
+    local serialized = self:Serialize("RESP_STATUS", data)
 
     -- If request came from group, reply to group. If whisper, reply to whisper.
     -- Actually, simpler logic: Always reply to GROUP if in group, else WHISPER?
@@ -65,15 +71,60 @@ function Consumables:ScanRaid()
         self:SendCommMessage("BotaConsumables", serialized, channel)
     else
         -- Self-test for solo debugging
-        self.scanResults[UnitName("player")] = {}
+        local _, class = UnitClass("player")
+        self.scanResults[UnitName("player")] = {
+            class = class,
+            items = {}
+        }
         if addon.db.profile.trackedItems then
             for itemId in pairs(addon.db.profile.trackedItems) do
-                self.scanResults[UnitName("player")][itemId] = GetItemCount(itemId)
+                self.scanResults[UnitName("player")].items[itemId] = GetItemCount(itemId)
             end
         end
         self:Refresh()
         AceConfigRegistry:NotifyChange(addonName)
     end
+end
+
+function Consumables:InjectTestData()
+    self.scanResults = {}
+    local tracked = {}
+    if addon.db.profile.trackedItems then
+        for id in pairs(addon.db.profile.trackedItems) do
+            table.insert(tracked, id)
+        end
+    end
+
+    local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK",
+        "MONK", "DRUID", "DEMONHUNTER", "EVOKER" }
+
+    for i = 1, 30 do
+        local player = "TestPlayer-" .. i
+        local class = classes[math.random(1, #classes)]
+        self.scanResults[player] = {
+            class = class,
+            items = {}
+        }
+        for _, id in ipairs(tracked) do
+            -- Even distribution across 5 buckets: 0, 1-Digit, 2-Digit, 3-Digit, 1k-9k
+            local bucket = math.random(1, 5)
+            local val
+            if bucket == 1 then
+                val = 0
+            elseif bucket == 2 then
+                val = math.random(1, 9)       -- 1 digit
+            elseif bucket == 3 then
+                val = math.random(10, 99)     -- 2 digits
+            elseif bucket == 4 then
+                val = math.random(100, 999)   -- 3 digits
+            else
+                val = math.random(1000, 9999) -- 4 digits (1k-9k)
+            end
+            self.scanResults[player].items[id] = val
+        end
+    end
+    self:Refresh()
+    AceConfigRegistry:NotifyChange(addonName)
 end
 
 function Consumables:GetOptions()
@@ -102,12 +153,27 @@ function Consumables:GetOptions()
                             end
                         end,
                     },
+                    dropzone = {
+                        name = "Drop Zone",
+                        type = "description",
+                        dialogControl = "BotaTools_ItemDropZone",
+                        order = 1.5,
+                        width = "full",
+                        -- Passing callback via 'arg' to avoid AceConfig validation error
+                        arg = {
+                            onItemDropped = function(itemId)
+                                addon.db.profile.trackedItems[itemId] = true
+                                Consumables:Refresh()
+                                AceConfigRegistry:NotifyChange(addonName)
+                            end,
+                        },
+                    },
                     trackedList = {
                         name = "Tracked Items",
-                        type = "group",
-                        inline = true,
+                        type = "description",
+                        dialogControl = "BotaTools_TrackedItemList",
                         order = 2,
-                        args = {},
+                        width = "full",
                     },
                 },
             },
@@ -121,6 +187,14 @@ function Consumables:GetOptions()
                         type = "execute",
                         order = 0,
                         func = function() self:ScanRaid() end,
+                        width = "half",
+                    },
+                    debugdata = {
+                        name = "Debug: 30 Players",
+                        type = "execute",
+                        order = 0.5,
+                        func = function() self:InjectTestData() end,
+                        width = "half",
                     },
                     results = {
                         name = "Results Table",
@@ -141,44 +215,7 @@ end
 function Consumables:Refresh()
     if not self.options then return end
 
-    -- 1. Refresh Tracked Items List
-    self.options.args.settings.args.trackedList.args = {}
-    if addon.db.profile.trackedItems then
-        for itemId in pairs(addon.db.profile.trackedItems) do
-            local itemName = "Item " .. itemId
-
-            -- Try to get name from C_Item
-            local info = C_Item.GetItemInfo(itemId)
-            if info and info.itemName then
-                itemName = info.itemName
-            elseif GetItemInfo then -- Legacy fallback
-                local name = GetItemInfo(itemId)
-                if name then itemName = name end
-            end
-
-            self.options.args.settings.args.trackedList.args["item" .. itemId] = {
-                name = itemName,
-                type = "description",
-                width = "double",
-                order = itemId,
-            }
-            self.options.args.settings.args.trackedList.args["delete" .. itemId] = {
-                name = "Delete",
-                type = "execute",
-                width = "half",
-                order = itemId + 0.1,
-                func = function()
-                    addon.db.profile.trackedItems[itemId] = nil
-                    self:Refresh()
-                    AceConfigRegistry:NotifyChange(addonName)
-                end,
-            }
-        end
-    end
-
-    -- 2. Refresh Status Table
-    -- The custom widget (BotaTools_ConsumableTable) handles drawing the results.
-    -- We just need to trigger an update if the widget is active.
+    -- The custom widget (BotaTools_TrackedItemList) handles drawing the list.
     -- Calling NotifyChange will cause the widget to refresh via SetLabel/OnAcquire if open.
     AceConfigRegistry:NotifyChange(addonName)
 end
