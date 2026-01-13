@@ -123,7 +123,7 @@ function Currencies:InjectTestData()
         for _, id in ipairs(tracked) do
             local info = C_CurrencyInfo.GetCurrencyInfo(id)
             -- Use actual cap if specified, otherwise fallback to 10000 for variety
-            local cap = info and info.maxQuantity
+            local cap = (info and info.maxQuantity) or 0
 
             -- Randomize values for Current / Total Earned / Cap
             local total = math.random(0, cap + 500)
