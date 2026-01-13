@@ -1,47 +1,24 @@
-name: Update Eating Lines
+name: Create Release
 
 on:
-  repository_dispatch:
-    types: [update-lines]
   workflow_dispatch:
+    inputs:
+      notes:
+        description: 'Release Notes'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
 jobs:
-  update-lines:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-          pip install -r scripts/requirements.txt
-
-      - name: Update Data.lua
-        env:
-          GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
-          SHEET_ID: ${{ secrets.SHEET_ID }}
-        run: |
-          python scripts/update_lines.py
-
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if [[ -n $(git status -s) ]]; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "changes=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Update Version and TOC
-        if: steps.check_changes.outputs.changes == 'true'
         id: versioning
         run: |
           # Robust extraction: look for line starting with ## Version: and grab the value
@@ -56,25 +33,22 @@ jobs:
             NEW_VER="v1"
           fi
           
-          # Update TOC file using regex to handle spacing variations
+          # Update TOC file
           sed -i -E "s/^## Version:[[:space:]]*.*/## Version: $NEW_VER/" BotaTools.toc
           
           echo "new_version=$NEW_VER" >> $GITHUB_OUTPUT
           echo "Successfully updated version to $NEW_VER"
 
       - name: Commit and Push
-        if: steps.check_changes.outputs.changes == 'true'
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add Data.lua BotaTools.toc
-          git commit -m "Update eating lines and version to ${{ steps.versioning.outputs.new_version }} [skip ci]"
+          git add BotaTools.toc
+          git commit -m "Bump version to ${{ steps.versioning.outputs.new_version }} [skip ci]"
           git push
 
       - name: Package Addon
-        if: steps.check_changes.outputs.changes == 'true'
         run: |
-          # Use the new version in the zip filename
           ZIP_NAME="BotaTools-${{ steps.versioning.outputs.new_version }}.zip"
           mkdir BotaTools
           cp *.lua *.toc BotaTools/
@@ -84,14 +58,15 @@ jobs:
           echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: steps.check_changes.outputs.changes == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.versioning.outputs.new_version }}
           name: Release ${{ steps.versioning.outputs.new_version }}
           body: |
-            ## Automated Update
-            - Updated eating lines from Google Sheets.
-            - Incremented version to ${{ steps.versioning.outputs.new_version }}.
+            ## Patch Notes
+            ${{ inputs.notes }}
+
+            ## Details
+            - Version: ${{ steps.versioning.outputs.new_version }}
           files: BotaTools-${{ steps.versioning.outputs.new_version }}.zip
           generate_release_notes: true
