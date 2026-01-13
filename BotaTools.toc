@@ -24,3 +24,6 @@ lib/AceTab-3.0/AceTab-3.0.xml
 
 Data.lua
 BotaTools.lua
+Modules/Eating.lua
+Modules/ConsumablesTable.lua
+Modules/Consumables.lua

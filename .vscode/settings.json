@@ -34,5 +34,8 @@
         "OKAY",
         "ChatFrameUtil",
         "SetDesaturation"
+    ],
+    "Lua.diagnostics.disable": [
+        "assign-type-mismatch"
     ]
 }
