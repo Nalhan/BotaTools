@@ -31,6 +31,8 @@ Modules/TrackedItemList.lua
 Modules/TrackedCurrencyList.lua
 Modules/ConsumablesTable.lua
 Modules/CurrenciesTable.lua
+Modules/EnchantsTable.lua
 Modules/Consumables.lua
 Modules/Currencies.lua
+Modules/Enchants.lua
 Modules/Debug.lua

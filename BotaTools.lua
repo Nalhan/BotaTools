@@ -20,7 +20,15 @@ local addon = AceAddon:NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0", "Ac
 addon.name = addonName
 
 -- Addon state
--- Modules will handle their own statet settings
+-- Modules will handle their own settings
+
+-- Module order for tabs
+local MODULE_ORDER = {
+    ["Eating"] = 1,
+    ["Consumables"] = 2,
+    ["Enchants"] = 3,
+    ["Currencies"] = 4,
+}
 
 -- Default settings
 local defaults = {
@@ -69,7 +77,9 @@ function addon:SetupOptions()
     -- Merge options from modules as top-level tabs
     for name, module in self:IterateModules() do
         if module.GetOptions then
-            options.args[name] = module:GetOptions()
+            local moduleOptions = module:GetOptions()
+            moduleOptions.order = MODULE_ORDER[name] or 100
+            options.args[name] = moduleOptions
         end
     end
 
