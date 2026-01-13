@@ -24,6 +24,13 @@ lib/AceTab-3.0/AceTab-3.0.xml
 
 Data.lua
 BotaTools.lua
+Utils.lua
 Modules/Eating.lua
+Modules/ItemDropZone.lua
+Modules/TrackedItemList.lua
+Modules/TrackedCurrencyList.lua
 Modules/ConsumablesTable.lua
+Modules/CurrenciesTable.lua
 Modules/Consumables.lua
+Modules/Currencies.lua
+Modules/Debug.lua

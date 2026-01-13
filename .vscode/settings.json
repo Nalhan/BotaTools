@@ -33,7 +33,8 @@
         "ChatEdit_InsertLink",
         "OKAY",
         "ChatFrameUtil",
-        "SetDesaturation"
+        "SetDesaturation",
+        "RAID_CLASS_COLORS"
     ],
     "Lua.diagnostics.disable": [
         "assign-type-mismatch"

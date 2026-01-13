@@ -34,7 +34,11 @@ local defaults = {
             [450770] = true, -- Food/Drink
         },
         trackedItems = {
-            [211880] = true, -- Algari Mana Oil (Example)
+            [241304] = true, -- Silvermoon Health Potion [R2]
+        },
+        trackedCurrencies = {
+            [3345] = true, -- Hero Dawncrest
+            [3347] = true, -- Myth Dawncrest
         },
     },
 }
