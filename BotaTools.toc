@@ -21,9 +21,11 @@ lib/AceBucket-3.0/AceBucket-3.0.xml
 lib/AceLocale-3.0/AceLocale-3.0.xml
 lib/AceSerializer-3.0/AceSerializer-3.0.xml
 lib/AceTab-3.0/AceTab-3.0.xml
+lib/LibDFramework-1.0/load.xml
 
-Data.lua
+
 BotaTools.lua
+Data.lua
 Utils.lua
 Modules/Eating.lua
 Modules/ItemDropZone.lua
