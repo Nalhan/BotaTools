@@ -1,11 +1,6 @@
-local addonName, addon = ...
-local BotaTools = LibStub("AceAddon-3.0"):GetAddon(addonName)
-local Debug = BotaTools:NewModule("Debug", "AceConsole-3.0")
-local AceGUI = LibStub("AceGUI-3.0")
+local _, BOTA = ...
 
-function Debug:OnInitialize()
-    self:RegisterChatCommand("botadump", "DumpTooltipData")
-end
+BOTA.Debug = BOTA.Debug or {}
 
 local function tableToString(t, indent)
     indent = indent or ""
@@ -25,9 +20,9 @@ local function tableToString(t, indent)
     return str
 end
 
-function Debug:DumpTooltipData(input)
+function BOTA.Debug:DumpTooltipData(input)
     if not input or input == "" then
-        self:Print("Usage: /botadump <Item Link/ID> or /botadump currency <ID>")
+        print("|cffff7d0aBotaTools|r: Usage: /bota dump <Item Link/ID> or /bota dump currency <ID>")
         return
     end
 
@@ -39,9 +34,9 @@ function Debug:DumpTooltipData(input)
         if data then
             local dumpStr = "Dump for CurrencyID: " .. id .. "\n\n"
             dumpStr = dumpStr .. tableToString(data)
-            BotaTools:ShowCopyWindow("BotaTools Currency Dump", dumpStr)
+            BOTA:ShowCopyWindow("BotaTools Currency Dump", dumpStr)
         else
-            self:Print("No data returned for Currency ID: " .. id)
+            print("|cffff7d0aBotaTools|r: No data returned for Currency ID: " .. id)
         end
         return
     end
@@ -55,7 +50,7 @@ function Debug:DumpTooltipData(input)
     end
 
     if not itemId then
-        self:Print("Invalid Item ID, Link, or Sub-command.")
+        print("|cffff7d0aBotaTools|r: Invalid Item ID, Link, or Sub-command.")
         return
     end
 
@@ -64,11 +59,11 @@ function Debug:DumpTooltipData(input)
         if data then
             local dumpStr = "Dump for ItemID: " .. itemId .. "\n\n"
             dumpStr = dumpStr .. tableToString(data)
-            BotaTools:ShowCopyWindow("BotaTools Item Dump", dumpStr)
+            BOTA:ShowCopyWindow("BotaTools Item Dump", dumpStr)
         else
-            self:Print("No data returned from C_TooltipInfo.GetItemByID")
+            print("|cffff7d0aBotaTools|r: No data returned from C_TooltipInfo.GetItemByID")
         end
     else
-        self:Print("C_TooltipInfo APIs not available.")
+        print("|cffff7d0aBotaTools|r: C_TooltipInfo APIs not available.")
     end
 end

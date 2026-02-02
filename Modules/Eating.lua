@@ -1,34 +1,45 @@
----@class BotaTools : AceAddon, AceConsole, AceEvent, AceComm, AceSerializer
----@field db AceDB.Schema
----@field options table
+local _, BOTA = ...
+local DF = _G["DetailsFramework"]
 
----@class Eating : AceModule, AceEvent
----@field searchFilter string
----@field currentPage number
----@field pageSize number
----@field lastAddedName string|nil
+-- Initialize module namespace
+BOTA.Eating = BOTA.Eating or {}
 
-local addonName, addonTable = ...
-local addon = LibStub("AceAddon-3.0"):GetAddon(addonName)
-local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 
--- Create the module
-local Eating = addon:NewModule("Eating", "AceEvent-3.0") ---@cast Eating Eating
 
--- Module State
-Eating.searchFilter = ""
-Eating.currentPage = 1
-Eating.pageSize = 50
-Eating.lastAddedName = nil
-
+-- Local state
 local isEating = false
 
-function Eating:OnEnable()
-    self:RegisterEvent("UNIT_AURA")
+-- Default settings
+local defaults = {
+    enableEatingChat = true,
+    onlyGuildGroup = false,
+    spellIDs = {
+        -- Well Fed (general food buff)
+        [104273] = true,
+    },
+}
+
+-- Initialize saved variables for this module
+function BOTA.Eating:InitSavedVars()
+    if not BOTASV then BOTASV = {} end
+    if not BOTASV.Eating then
+        BOTASV.Eating = CopyTable(defaults)
+    end
+    -- Ensure spellIDs table exists
+    if not BOTASV.Eating.spellIDs then
+        BOTASV.Eating.spellIDs = CopyTable(defaults.spellIDs)
+    end
+end
+
+function BOTA.Eating:ResetDefaults()
+    BOTASV.Eating = CopyTable(defaults)
+    if self.managementList then
+        self.managementList:Refresh()
+    end
 end
 
 -- Helper to check if the group constitutes a "Guild Group"
-function Eating:IsGuildGroup()
+function BOTA.Eating:IsGuildGroup()
     local guildName = GetGuildInfo("player")
     if not guildName then return false end
 
@@ -39,7 +50,7 @@ function Eating:IsGuildGroup()
 
     for i = 1, count - 1 do
         local unit = prefix .. i
-        if unit ~= "player" then -- Should be redundant but safe
+        if unit ~= "player" then
             local unitGuild = GetGuildInfo(unit)
             if unitGuild == guildName then
                 return true
@@ -49,50 +60,28 @@ function Eating:IsGuildGroup()
     return false
 end
 
-function Eating:UNIT_AURA(event, unit)
-    if unit ~= "player" or InCombatLockdown() then return end
-
-    local hasFood = false
-
-    -- Check for buffs acting as food
-    for i = 1, 40 do
-        local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
-        if not aura then break end
-
-        -- Match by spell ID as requested
-        if addon.db.profile.spellIDs[aura.spellId] then
-            hasFood = true
-            break
-        end
-    end
-
-    if hasFood and not isEating then
-        isEating = true
-        if addon.db.profile.enableEatingChat then
-            self:SayRandomLine()
-        end
-    elseif not hasFood and isEating then
-        isEating = false
-    end
-end
-
-function Eating:SayRandomLine()
-    local lines = addonTable.OfficialLines or {}
+function BOTA.Eating:SayRandomLine()
+    local lines = BOTA.OfficialLines or {}
     if #lines == 0 then return end
 
-    -- Guard against combat or messaging lockdown in Midnight
-    -- Also guard against open-world SAY protection (only allowed in instances)
-    if InCombatLockdown() or (C_ChatInfo and C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown()) or not IsInInstance() then
+    -- Guard against combat or messaging lockdown
+    if InCombatLockdown() or not IsInInstance() then
         if not IsInInstance() then
-            addon:Print("Eating chat suppressed: SAY is blocked outside of instances.")
+            if BOTA.DebugMode then
+                print(
+                    "|cFF00FFFFBotaTools|r: Eating chat suppressed: SAY is blocked outside of instances.")
+            end
         else
-            addon:Print("Eating chat suppressed: In combat or messaging lockdown.")
+            if BOTA.DebugMode then
+                print(
+                    "|cFF00FFFFBotaTools|r: Eating chat suppressed: In combat or messaging lockdown.")
+            end
         end
         return
     end
 
     -- Guild Group Check
-    if addon.db.profile.onlyGuildGroup then
+    if BOTASV.Eating.onlyGuildGroup then
         if not self:IsGuildGroup() then
             return -- Silently fail if not in a guild group
         end
@@ -113,7 +102,47 @@ function Eating:SayRandomLine()
     end
 end
 
-function Eating:GetWeightColor(weight)
+function BOTA.Eating:OnUnitAura(unit)
+    if unit ~= "player" or InCombatLockdown() then return end
+
+    local hasFood = false
+
+    -- Check for buffs acting as food triggers
+    for i = 1, 40 do
+        local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+        if not aura then break end
+
+        if BOTASV.Eating.spellIDs[aura.spellId] then
+            hasFood = true
+            break
+        end
+    end
+
+    if hasFood and not isEating then
+        isEating = true
+        if BOTASV.Eating.enableEatingChat then
+            self:SayRandomLine()
+        end
+    elseif not hasFood and isEating then
+        isEating = false
+    end
+end
+
+function BOTA.Eating:Enable()
+    self:InitSavedVars()
+
+    -- Register for UNIT_AURA events
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("UNIT_AURA")
+    frame:SetScript("OnEvent", function(_, event, unit)
+        if event == "UNIT_AURA" then
+            BOTA.Eating:OnUnitAura(unit)
+        end
+    end)
+    self.eventFrame = frame
+end
+
+function BOTA.Eating:GetWeightColor(weight)
     if not weight then return "ffffff" end
     if weight == 100 then
         return "e5cc80" -- Heirloom
@@ -132,307 +161,244 @@ function Eating:GetWeightColor(weight)
     end
 end
 
-function Eating:Refresh()
-    self:RefreshLineList()
-    self:RefreshSpellList()
-end
+---------------------------------------------------------------------------
+-- UI Options for LibDFramework
+---------------------------------------------------------------------------
 
-function Eating:RefreshLineList()
-    -- This function modifies the options table directly
-    -- We need to ensure the options table exists and has the correct path
-    if not addon.options then return end
+function BOTA.Eating:BuildOptions()
+    local addSpellInput = ""
 
-    local lines = addonTable.OfficialLines or {}
-    local filtered = {}
-    local search = self.searchFilter
+    return {
+        -- Settings Section Header
+        {
+            type = "label",
+            get = function() return "Eating Meme Settings" end,
+            text_template = DF:GetTemplate("font", "ORANGE_FONT_TEMPLATE"),
+        },
 
-    -- 1. Filter
-    for i, lineObj in ipairs(lines) do
-        if search == "" or lineObj.text:lower():find(search, 1, true) then
-            -- Keep track of original index
-            table.insert(filtered, { obj = lineObj, originalIndex = i })
-        end
-    end
+        -- Enable Eating Chat Toggle
+        {
+            type = "toggle",
+            boxfirst = true,
+            name = "Enable Eating Chat",
+            desc = "Say a random line when you start eating.",
+            get = function() return BOTASV.Eating.enableEatingChat end,
+            set = function(self, fixedparam, value)
+                BOTASV.Eating.enableEatingChat = value
+            end,
+        },
 
-    -- 2. Paginate
-    local pageSize = self.pageSize
-    local totalPages = math.max(1, math.ceil(#filtered / pageSize))
-    if self.currentPage > totalPages then self.currentPage = totalPages end
+        -- Only Guild Group Toggle
+        {
+            type = "toggle",
+            boxfirst = true,
+            name = "Only in Guild Group",
+            desc = "Only say a line if you are in a group with other guild members.",
+            get = function() return BOTASV.Eating.onlyGuildGroup end,
+            set = function(self, fixedparam, value)
+                BOTASV.Eating.onlyGuildGroup = value
+            end,
+            spacement = true, -- Add extra vertical space after this
+        },
 
-    local startIndex = (self.currentPage - 1) * pageSize + 1
-    local endIndex = math.min(startIndex + pageSize - 1, #filtered)
+        -- Spell Triggers Section Header
+        {
+            type = "label",
+            get = function() return "Aura Triggers" end,
+            text_template = DF:GetTemplate("font", "ORANGE_FONT_TEMPLATE"),
+        },
 
-    -- 3. Render Slice
-    -- Update for nested path: addon.options.args.Eating.args.memes.args.lineList.args
-    if addon.options.args.Eating and addon.options.args.Eating.args.memes and addon.options.args.Eating.args.memes.args.lineList then
-        addon.options.args.Eating.args.memes.args.lineList.args = {}
-        for i = startIndex, endIndex do
-            local entry = filtered[i]
-            local lineObj = entry.obj
-            local originalIndex = entry.originalIndex
-            local color = self:GetWeightColor(lineObj.weight)
-            local displayName = string.format("|cff%s[%d]|r %s", color, lineObj.weight or 10, lineObj.text)
-
-            addon.options.args.Eating.args.memes.args.lineList.args["group" .. originalIndex] = {
-                type = "group",
-                name = "",
-                inline = true,
-                order = i,
-                args = {
-                    line = {
-                        name = displayName,
-                        type = "description",
-                        order = 1,
-                        width = "full",
-                    }
-                },
-            }
-        end
-    end
-end
-
-function Eating:RefreshSpellList()
-    if addon.options.args.Eating and addon.options.args.Eating.args.settings and addon.options.args.Eating.args.settings.args.triggers then
-        addon.options.args.Eating.args.settings.args.triggers.args.spellList.args = {}
-        local i = 0
-        for spellId in pairs(addon.db.profile.spellIDs) do
-            i = i + 1
-            local currentSpellId = spellId -- local copy for closure
-
-            -- Fetch spell info for display
-            local spellInfo = C_Spell.GetSpellInfo(currentSpellId)
-            local baseName = (spellInfo and spellInfo.name) or "Unknown"
-            local name = string.format("%s (%d)", baseName, currentSpellId)
-            local icon = (spellInfo and spellInfo.iconID) or 134400 -- Question mark icon
-
-            addon.options.args.Eating.args.settings.args.triggers.args.spellList.args["spell" .. currentSpellId] = {
-                name = name,
-                desc = "Spell ID: " .. currentSpellId,
-                type = "description",
-                image = icon,
-                imageWidth = 24,
-                imageHeight = 24,
-                order = i * 10,
-                width = "double",
-            }
-            addon.options.args.Eating.args.settings.args.triggers.args.spellList.args["deleteSpell" .. currentSpellId] = {
-                name = "Delete",
-                type = "execute",
-                func = function()
-                    addon.db.profile.spellIDs[currentSpellId] = nil
-                    self:RefreshSpellList()
-                    AceConfigRegistry:NotifyChange(addonName)
-                end,
-                order = i * 10 + 1,
-                width = "half",
-            }
-        end
-    end
-end
-
-function Eating:GetOptions()
-    local options = {
-        name = "Eating Meme Reborn",
-        handler = self,
-        type = "group",
-        childGroups = "tab",
-        args = {
-            settings = {
-                name = "Settings",
-                type = "group",
-                order = 1,
-                args = {
-                    enableEatingChat = {
-                        name = "Enable Eating Chat",
-                        desc = "Say a random line when you start eating.",
-                        type = "toggle",
-                        set = function(info, val) addon.db.profile.enableEatingChat = val end,
-                        get = function(info) return addon.db.profile.enableEatingChat end,
-                        order = 2,
-                    },
-                    onlyGuildGroup = {
-                        name = "Only in Guild Group",
-                        desc = "Only say a line if you are in a group with other guild members.",
-                        type = "toggle",
-                        set = function(info, val) addon.db.profile.onlyGuildGroup = val end,
-                        get = function(info) return addon.db.profile.onlyGuildGroup end,
-                        order = 3,
-                    },
-                    triggers = {
-                        name = "Aura Triggers",
-                        type = "group",
-                        inline = true,
-                        order = 4,
-                        args = {
-                            header = {
-                                name = "Spell ID Triggers",
-                                type = "header",
-                                order = 0,
-                            },
-                            addSpell = {
-                                name = "Add New Spell ID",
-                                desc = "Enter a numeric spell ID to add a trigger.",
-                                type = "input",
-                                set = function(info, val)
-                                    local id = tonumber(val:match("(%d+)"))
-                                    if id then
-                                        addon.db.profile.spellIDs[id] = true
-                                        local spellInfo = C_Spell.GetSpellInfo(id)
-                                        self.lastAddedName = (spellInfo and spellInfo.name) or tostring(id)
-                                        addon:Print("Added spell ID trigger: " .. tostring(id))
-                                        self:RefreshSpellList()
-                                        AceConfigRegistry:NotifyChange(addonName)
-                                    end
-                                end,
-                                order = 1,
-                            },
-                            lastAdded = {
-                                name = function()
-                                    if self.lastAddedName then
-                                        return "|cff1eff00Last Added:|r " .. self.lastAddedName
-                                    end
-                                    return ""
-                                end,
-                                type = "description",
-                                order = 1.1,
-                            },
-                            spellList = {
-                                name = "Active Triggers",
-                                type = "group",
-                                inline = true,
-                                order = 2,
-                                args = {},
-                            }
-                        }
-                    }
-                }
+        -- Add Spell ID Input
+        {
+            type = "textentry",
+            name = "Add Spell ID",
+            desc = "Enter a numeric spell ID to add as a trigger. Press Enter to add.",
+            get = function() return addSpellInput end,
+            set = function(self, fixedparam, value)
+                addSpellInput = value
+            end,
+            hooks = {
+                OnEnterPressed = function(self)
+                    local id = tonumber(addSpellInput:match("(%d+)"))
+                    if id then
+                        BOTASV.Eating.spellIDs[id] = true
+                        local spellInfo = C_Spell.GetSpellInfo(id)
+                        local name = spellInfo and spellInfo.name or tostring(id)
+                        print("|cFF00FFFFBotaTools|r: Added spell ID trigger: " .. name .. " (" .. id .. ")")
+                        addSpellInput = ""
+                    end
+                end
             },
-            memes = {
-                name = "Meme Collection",
-                type = "group",
-                order = 2,
-                args = {
-                    header = {
-                        name = "Meme Collection",
-                        type = "header",
-                        order = 0,
-                    },
-                    searchMemes = {
-                        name = "Search Memes",
-                        desc = "Filter the meme list by text.",
-                        type = "input",
-                        order = 1,
-                        width = "double",
-                        get = function() return self.searchFilter end,
-                        set = function(info, val)
-                            self.searchFilter = val:lower()
-                            self.currentPage = 1 -- Reset to page 1 on search
-                            self:RefreshLineList()
-                            AceConfigRegistry:NotifyChange(addonName)
-                        end,
-                    },
-                    spacer1 = {
-                        name = "",
-                        type = "description",
-                        order = 1.5,
-                        width = "full",
-                    },
-                    prevPage = {
-                        name = "Previous",
-                        type = "execute",
-                        order = 2,
-                        width = "half",
-                        func = function()
-                            self.currentPage = math.max(1, self.currentPage - 1)
-                            self:RefreshLineList()
-                            AceConfigRegistry:NotifyChange(addonName)
-                        end,
-                        disabled = function() return self.currentPage <= 1 end,
-                    },
-                    jumpPage = {
-                        name = "Jump to Page",
-                        type = "select",
-                        order = 3,
-                        width = "normal",
-                        values = function()
-                            local filtered = {}
-                            local search = self.searchFilter
-                            for _, line in ipairs(addonTable.OfficialLines or {}) do
-                                if search == "" or line.text:lower():find(search, 1, true) then
-                                    table.insert(filtered, line)
-                                end
-                            end
-                            local totalPages = math.max(1, math.ceil(#filtered / self.pageSize))
-                            local vals = {}
-                            for i = 1, totalPages do
-                                vals[i] = "Page " .. i
-                            end
-                            return vals
-                        end,
-                        get = function() return self.currentPage end,
-                        set = function(info, val)
-                            self.currentPage = val
-                            self:RefreshLineList()
-                            AceConfigRegistry:NotifyChange(addonName)
-                        end,
-                    },
-                    nextPage = {
-                        name = "Next",
-                        type = "execute",
-                        order = 4,
-                        width = "half",
-                        func = function()
-                            local filtered = {}
-                            local search = self.searchFilter
-                            for _, line in ipairs(addonTable.OfficialLines or {}) do
-                                if search == "" or line.text:lower():find(search, 1, true) then
-                                    table.insert(filtered, line)
-                                end
-                            end
-                            local totalPages = math.max(1, math.ceil(#filtered / self.pageSize))
-                            self.currentPage = math.min(totalPages, self.currentPage + 1)
-                            self:RefreshLineList()
-                            AceConfigRegistry:NotifyChange(addonName)
-                        end,
-                        disabled = function()
-                            local filteredCount = 0
-                            local search = self.searchFilter
-                            for _, line in ipairs(addonTable.OfficialLines or {}) do
-                                if search == "" or line.text:lower():find(search, 1, true) then
-                                    filteredCount = filteredCount + 1
-                                end
-                            end
-                            local totalPages = math.max(1, math.ceil(filteredCount / self.pageSize))
-                            return self.currentPage >= totalPages
-                        end,
-                    },
-                    pageStatus = {
-                        name = function()
-                            local filteredCount = 0
-                            local search = self.searchFilter
-                            for _, line in ipairs(addonTable.OfficialLines or {}) do
-                                if search == "" or line.text:lower():find(search, 1, true) then
-                                    filteredCount = filteredCount + 1
-                                end
-                            end
-                            local totalPages = math.max(1, math.ceil(filteredCount / self.pageSize))
-                            return string.format("|cffffff00Page %d of %d|r (%d lines total)", self.currentPage,
-                                totalPages, filteredCount)
-                        end,
-                        type = "description",
-                        order = 5,
-                        width = "full",
-                    },
-                    lineList = {
-                        name = "Eating Lines",
-                        type = "group",
-                        inline = true,
-                        order = 6,
-                        args = {},
-                    },
-                }
-            }
-        }
+            spacement = true,
+        },
     }
-    return options
+end
+
+function BOTA.Eating:BuildCallback()
+    return function()
+        -- Callback when menu is refreshed/closed
+    end
+end
+
+function BOTA.Eating:CreateTable(parent)
+    if self.tableFrame then
+        self.tableFrame:SetParent(parent)
+        self.tableFrame:Show()
+        return self.tableFrame
+    end
+
+    local container = BOTA:CreateTabContainer(parent, "BotaEatingLinesContainer")
+
+    local headers = {
+        { name = "Meme Line", width = container:GetWidth() - 80 },
+        { name = "Weight",    width = 60 },
+    }
+
+    local headerFrame = container.headerFrame
+
+    local x = 0
+    for _, h in ipairs(headers) do
+        local label = headerFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        label:SetPoint("LEFT", headerFrame, "LEFT", x + 5, 0)
+        label:SetText(h.name)
+        label:SetTextColor(1, 0.8, 0, 1)
+        x = x + h.width
+    end
+
+    -- Row Creation
+    local createLineFunc = function(self, index)
+        local parentFrame = self.widget or self
+        local line = CreateFrame("Frame", "$parentLine" .. index, parentFrame)
+        line:SetSize(self:GetWidth(), 24)
+        line:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 0, -((index - 1) * 24))
+        line:SetFrameLevel(parentFrame:GetFrameLevel() + 20)
+
+        local bg = line:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0, 0, 0, 0.2)
+        line.bg = bg
+
+        local text = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        text:SetPoint("LEFT", 5, 0)
+        text:SetWidth(headers[1].width)
+        text:SetJustifyH("LEFT")
+        line.text = text
+
+        local weight = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        weight:SetPoint("LEFT", headers[1].width + 5, 0)
+        weight:SetWidth(headers[2].width)
+        weight:SetJustifyH("CENTER")
+        line.weightText = weight
+
+        return line
+    end
+
+    -- Refresh Logic
+    local refreshFunc = function(self, data, offset, totalLines)
+        for i = 1, totalLines do
+            local index = i + offset
+            local lineData = data[index]
+            local line = self:GetLine(i)
+            if lineData then
+                line:Show()
+                line.text:SetText(lineData.text)
+                line.weightText:SetText(lineData.weight or 10)
+
+                local color = BOTA.Eating:GetWeightColor(lineData.weight)
+                line.text:SetTextColor(tonumber(color:sub(1, 2), 16) / 255, tonumber(color:sub(3, 4), 16) / 255,
+                    tonumber(color:sub(5, 6), 16) / 255)
+
+                if index % 2 == 0 then line.bg:Show() else line.bg:Hide() end
+            else
+                line:Hide()
+            end
+        end
+    end
+
+    local scrollBox = DF:CreateScrollBox(container, "$parentScrollBox", refreshFunc, {}, container:GetWidth() - 25,
+        container:GetHeight() - 30, 16, 24)
+    scrollBox:SetPoint("TOPLEFT", container, "TOPLEFT", 0, -30)
+    DF:ReskinSlider(scrollBox)
+
+    for i = 1, 16 do
+        scrollBox:CreateLine(createLineFunc)
+    end
+
+    container.scrollBox = scrollBox
+    scrollBox:SetFrameLevel(container:GetFrameLevel() + 5)
+    scrollBox:Show()
+
+    self.tableFrame = container
+    container:Show()
+    return container
+end
+
+function BOTA.Eating:RefreshTable()
+    if self.tableFrame and self.tableFrame.scrollBox then
+        local data = BOTA.OfficialLines or {}
+        self.tableFrame.scrollBox:SetData(data)
+        self.tableFrame.scrollBox:Refresh()
+    end
+end
+
+function BOTA.Eating:OnTabShown(tabFrame)
+    self:CreateTable(tabFrame)
+    self:RefreshTable()
+
+    -- Create Management List
+    if not self.managementList then
+        local callbacks = {
+            OnRemove = function(index)
+                if self.displayList and self.displayList[index] then
+                    local id = self.displayList[index]
+                    BOTASV.Eating.spellIDs[id] = nil
+                    print("|cFF00FFFFBotaTools|r: Removed spell trigger ID: " .. id)
+
+                    self.managementList:Refresh()
+                    DF:DetailWindow_UpdateOptions()
+                end
+            end,
+            -- No OnMoveUp/Down for Eating
+        }
+
+        -- Proxy for displayList since we generate it on fly or cache it
+        self.displayList = {}
+
+        -- Custom Refresh on the frame to rebuild the list
+        local originalCreate = BOTA.CreateManagementList
+        -- Actually, BOTA:CreateManagementList returns a frame with a .scrollBox
+        -- We can just pass a table that we update before calling refresh.
+
+        local config = {
+            width = 280,
+            height = 250,
+            rowHeight = 24,
+            nameProvider = function(id)
+                local info = C_Spell.GetSpellInfo(id)
+                return (info and info.name or "Unknown") .. " (" .. id .. ")"
+            end,
+            iconProvider = function(id)
+                local info = C_Spell.GetSpellInfo(id)
+                return info and info.iconID
+            end
+        }
+
+        self.managementList = BOTA:CreateManagementList(tabFrame, self.displayList, callbacks, config)
+        self.managementList:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 10, -250)
+
+        -- Hook Refresh to update displayList
+        local oldRefresh = self.managementList.Refresh
+        self.managementList.Refresh = function(f)
+            wipe(self.displayList)
+            for id in pairs(BOTASV.Eating.spellIDs or {}) do
+                table.insert(self.displayList, id)
+            end
+            table.sort(self.displayList)
+            oldRefresh(f)
+        end
+
+        self.managementList:Refresh()
+    else
+        self.managementList:Refresh()
+    end
 end

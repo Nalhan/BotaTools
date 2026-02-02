@@ -2,9 +2,35 @@
 ## Title: BotaTools
 ## Notes: A collection of tools for the bota
 ## Author: Bota
-## Version: v6
+## Version: v7
 ## SavedVariables: BOTASV
 
+# Libraries
 lib/libs.xml
 
+# Data (must load early for OfficialLines)
+Data.lua
+
+# UI Core (creates main panel and templates)
+
+
+# Modules (register their BuildOptions/BuildCallback)
+Modules/Eating.lua
+Modules/Consumables.lua
+Modules/Currencies.lua
+Modules/Enchants.lua
+
+# Utilities
+Utils.lua
+
+# Config UI (builds tabs and menus)
+ConfigUI.lua
+
+# Debug
+Debug.lua
+
+# Commands
+Commands.lua
+
+# Entry point (initializes everything after ADDON_LOADED)
 BotaTools.lua
