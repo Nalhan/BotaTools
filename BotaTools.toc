@@ -2,37 +2,35 @@
 ## Title: BotaTools
 ## Notes: A collection of tools for the bota
 ## Author: Bota
-## Version: v6
-## SavedVariables: BotaToolsDB
+## Version: v7
+## SavedVariables: BOTASV
 
-lib/LibStub/LibStub.lua
-lib/CallbackHandler-1.0/CallbackHandler-1.0.xml
-lib/AceAddon-3.0/AceAddon-3.0.xml
-lib/AceEvent-3.0/AceEvent-3.0.xml
-lib/AceConsole-3.0/AceConsole-3.0.xml
-lib/AceDB-3.0/AceDB-3.0.xml
-lib/AceDBOptions-3.0/AceDBOptions-3.0.xml
-lib/AceConfig-3.0/AceConfig-3.0.xml
-lib/AceGUI-3.0/AceGUI-3.0.xml
-lib/AceComm-3.0/AceComm-3.0.xml
-lib/AceTimer-3.0/AceTimer-3.0.xml
-lib/AceHook-3.0/AceHook-3.0.xml
-lib/AceBucket-3.0/AceBucket-3.0.xml
-lib/AceLocale-3.0/AceLocale-3.0.xml
-lib/AceSerializer-3.0/AceSerializer-3.0.xml
-lib/AceTab-3.0/AceTab-3.0.xml
+# Libraries
+lib/libs.xml
 
+# Data (must load early for OfficialLines)
 Data.lua
-BotaTools.lua
-Utils.lua
+
+# UI Core (creates main panel and templates)
+
+
+# Modules (register their BuildOptions/BuildCallback)
 Modules/Eating.lua
-Modules/ItemDropZone.lua
-Modules/TrackedItemList.lua
-Modules/TrackedCurrencyList.lua
-Modules/ConsumablesTable.lua
-Modules/CurrenciesTable.lua
-Modules/EnchantsTable.lua
 Modules/Consumables.lua
 Modules/Currencies.lua
 Modules/Enchants.lua
-Modules/Debug.lua
+
+# Utilities
+Utils.lua
+
+# Config UI (builds tabs and menus)
+ConfigUI.lua
+
+# Debug
+Debug.lua
+
+# Commands
+Commands.lua
+
+# Entry point (initializes everything after ADDON_LOADED)
+BotaTools.lua
