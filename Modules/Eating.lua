@@ -112,7 +112,7 @@ function BOTA.Eating:OnUnitAura(unit)
         local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
         if not aura then break end
 
-        if BOTASV.Eating.spellIDs[aura.spellId] then
+        if BOTASV.Eating.spellIDs[aura.spellId] or BOTASV.Eating.spellIDs[aura.name] then
             hasFood = true
             break
         end
@@ -211,21 +211,31 @@ function BOTA.Eating:BuildOptions()
         -- Add Spell ID Input
         {
             type = "textentry",
-            name = "Add Spell ID",
-            desc = "Enter a numeric spell ID to add as a trigger. Press Enter to add.",
+            name = "Add Aura (Name or ID)",
+            desc = "Enter a numeric spell ID or a exact aura name to add as a trigger. Press Enter to add.",
             get = function() return addSpellInput end,
             set = function(self, fixedparam, value)
                 addSpellInput = value
             end,
             hooks = {
                 OnEnterPressed = function(self)
-                    local id = tonumber(addSpellInput:match("(%d+)"))
+                    local value = addSpellInput:trim()
+                    if value == "" then return end
+
+                    local id = tonumber(value)
                     if id then
                         BOTASV.Eating.spellIDs[id] = true
                         local spellInfo = C_Spell.GetSpellInfo(id)
                         local name = spellInfo and spellInfo.name or tostring(id)
                         print("|cFF00FFFFBotaTools|r: Added spell ID trigger: " .. name .. " (" .. id .. ")")
-                        addSpellInput = ""
+                    else
+                        -- Treat as name
+                        BOTASV.Eating.spellIDs[value] = true
+                        print("|cFF00FFFFBotaTools|r: Added aura name trigger: " .. value)
+                    end
+                    addSpellInput = ""
+                    if BOTA.Eating.managementList then
+                        BOTA.Eating.managementList:Refresh()
                     end
                 end
             },
@@ -355,7 +365,6 @@ function BOTA.Eating:OnTabShown(tabFrame)
                     print("|cFF00FFFFBotaTools|r: Removed spell trigger ID: " .. id)
 
                     self.managementList:Refresh()
-                    DF:DetailWindow_UpdateOptions()
                 end
             end,
             -- No OnMoveUp/Down for Eating
@@ -374,12 +383,19 @@ function BOTA.Eating:OnTabShown(tabFrame)
             height = 250,
             rowHeight = 24,
             nameProvider = function(id)
-                local info = C_Spell.GetSpellInfo(id)
-                return (info and info.name or "Unknown") .. " (" .. id .. ")"
+                if type(id) == "number" then
+                    local info = C_Spell.GetSpellInfo(id)
+                    return (info and info.name or "Unknown") .. " (" .. id .. ")"
+                else
+                    return id
+                end
             end,
             iconProvider = function(id)
-                local info = C_Spell.GetSpellInfo(id)
-                return info and info.iconID
+                if type(id) == "number" then
+                    local info = C_Spell.GetSpellInfo(id)
+                    return info and info.iconID
+                end
+                return nil
             end
         }
 
