@@ -153,13 +153,14 @@ BOTA.OfficialLines = {
     { text = "suck 'em down",                                                                  weight = 12 },
 }
 
-BOTA.ChangelogData = [[
-|cFF00FFFFBotaTools v8|r
 
-- |cFF00FF00[New]|r Added Changelog module.
-- |cFFFFFF00[Fix]|r Fixed guild group checking on eating module
-- |cFFFFFF00[Fix]|r Fixed sorting error in Eating module.
-- |cFF00FF00[New]|r Eating module now includes a manual aura adding UI.
-- |cFF00FF00[New]|r Added debug logging to comm modules.
-- |cFFFFFF00[Fix]|r Attempted fix for comm issues in Consumables and Currencies modules.
+BOTA.ChangelogData = [[
+|cFF00FFFFBotaTools v10|r
+
+- fix workflow
+- make comms send requested ids; add comm logging to debug
+- fix guild group checking; fix monitoring aura by name
+- add changelog module
+- update config panel info
+- match aura by name in eating
 ]]
