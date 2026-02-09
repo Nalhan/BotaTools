@@ -155,6 +155,14 @@ BOTA.OfficialLines = {
 
 
 BOTA.ChangelogData = [[
+|cFF00FFFFBotaTools v13|r
+
+|cFFFFFF00Release Notes:|r
+please
+
+|cFF00FFFFCommits:|r
+- [60e3c5c] zz
+
 |cFF00FFFFBotaTools v12|r
 
 |cFFFFFF00Release Notes:|r
@@ -171,12 +179,4 @@ does it work???
 - refactor debug logging
 - update github workflow
 
-|cFF00FFFFBotaTools v10|r
-
-- fix workflow
-- make comms send requested ids; add comm logging to debug
-- fix guild group checking; fix monitoring aura by name
-- add changelog module
-- update config panel info
-- match aura by name in eating
 ]]
