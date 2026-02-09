@@ -82,22 +82,15 @@ end
 function BOTA.Consumables:OnCommReceived(prefix, message, distribution, sender)
     if prefix ~= "BotaConsumables" then return end
 
-    if BOTA.DebugMode then
-        print("|cFF00FFFFBotaTools|r: [Consumables] OnCommReceived from " ..
-            tostring(sender) .. " (" .. tostring(distribution) .. ")")
-    end
+    BOTA:DebugLog("[Consumables] OnCommReceived from " .. tostring(sender) .. " (" .. tostring(distribution) .. ")")
 
     local success, msgType, data = AceSerializer:Deserialize(message)
     if not success then
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Consumables] Failed to deserialize message from " .. tostring(sender))
-        end
+        BOTA:DebugLog("[Consumables] Failed to deserialize message from " .. tostring(sender))
         return
     end
 
-    if BOTA.DebugMode then
-        print("|cFF00FFFFBotaTools|r: [Consumables] Message Type: " .. tostring(msgType))
-    end
+    BOTA:DebugLog("[Consumables] Message Type: " .. tostring(msgType))
 
     if msgType == "REQ_STATUS" then
         self:SendStatus(distribution, sender, data)
@@ -126,14 +119,10 @@ function BOTA.Consumables:SendStatus(distribution, target, requestedList)
 
     if IsInGroup() then
         local channel = IsInRaid() and "RAID" or "PARTY"
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Consumables] Sending RESP_STATUS to channel: " .. channel)
-        end
+        BOTA:DebugLog("[Consumables] Sending RESP_STATUS to channel: " .. channel)
         AceComm:SendCommMessage("BotaConsumables", serialized, channel)
     elseif target then
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Consumables] Sending RESP_STATUS to target: " .. tostring(target))
-        end
+        BOTA:DebugLog("[Consumables] Sending RESP_STATUS to target: " .. tostring(target))
         AceComm:SendCommMessage("BotaConsumables", serialized, "WHISPER", target)
     end
 end
@@ -148,9 +137,7 @@ function BOTA.Consumables:ScanRaid()
 
     if IsInGroup() then
         local channel = IsInRaid() and "RAID" or "PARTY"
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Consumables] Sending REQ_STATUS to channel: " .. channel)
-        end
+        BOTA:DebugLog("[Consumables] Sending REQ_STATUS to channel: " .. channel)
         AceComm:SendCommMessage("BotaConsumables", serialized, channel)
     else
         -- Self-test for solo
@@ -357,7 +344,7 @@ function BOTA.Consumables:RefreshTable()
     end
     table.sort(players)
 
-    if BOTA.DebugMode then print("|cFF00FFFFBotaTools|r: Refreshed Consumables Table. Results count: " .. #players) end
+    BOTA:DebugLog("Refreshed Consumables Table. Results count: " .. #players)
 
     -- Headers (in container.headerFrame)
     local trackedList = BOTASV.Consumables.trackedList or {}

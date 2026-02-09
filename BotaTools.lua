@@ -6,6 +6,12 @@ BOTA.DebugMode = false
 local LDB = LibStub("LibDataBroker-1.1")
 local LDBIcon = LDB and LibStub("LibDBIcon-1.0")
 
+function BOTA:DebugLog(msg)
+    if self.DebugMode then
+        print("|cFFD90B4FBotaTools DEBUG|r: " .. tostring(msg))
+    end
+end
+
 function BOTA:LDBInit()
     if LDB then
         local databroker = LDB:NewDataObject("BotaTools", {

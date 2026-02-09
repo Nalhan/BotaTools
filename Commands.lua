@@ -16,7 +16,7 @@ SlashCmdList["BOTA"] = function(msg, editbox)
         return
     elseif command == "debug" then
         BOTA.DebugMode = not BOTA.DebugMode
-        print("|cFF00FFFFBotaTools|r: Debug Mode " ..
+        print("|cFFD90B4FBotaTools|r: Debug Mode " ..
             (BOTA.DebugMode and "|cff00ff00Enabled|r" or "|cffff0000Disabled|r"))
         return
     elseif command == "reset" then
@@ -24,7 +24,7 @@ SlashCmdList["BOTA"] = function(msg, editbox)
         if BOTA.Consumables and BOTA.Consumables.ResetDefaults then BOTA.Consumables:ResetDefaults() end
         if BOTA.Currencies and BOTA.Currencies.ResetDefaults then BOTA.Currencies:ResetDefaults() end
 
-        print("|cFF00FFFFBotaTools|r: All settings have been reset to default.")
+        print("|cFFD90B4FBotaTools|r: All settings have been reset to default.")
         return
     elseif command == "changelog" then
         if BOTA.Changelog and BOTA.Changelog.Show then

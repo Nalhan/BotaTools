@@ -64,11 +64,8 @@ function BOTA.Eating:UpdateGuildGroupCache()
 
     cachedIsGuildGroup = guildCount >= (count * 0.8)
 
-    if BOTA.DebugMode then
-        print(
-            "|cFF00FFFFBotaTools|r: Guild group cache updated: " ..
-            guildCount .. "/" .. count .. " (" .. (cachedIsGuildGroup and "Guild Group" or "Not a Guild Group") .. ")")
-    end
+    BOTA:DebugLog("Guild group cache updated: " ..
+        guildCount .. "/" .. count .. " (" .. (cachedIsGuildGroup and "Guild Group" or "Not a Guild Group") .. ")")
 end
 
 function BOTA.Eating:IsGuildGroup()
@@ -82,15 +79,9 @@ function BOTA.Eating:SayRandomLine()
     -- Guard against combat or messaging lockdown
     if InCombatLockdown() or not IsInInstance() then
         if not IsInInstance() then
-            if BOTA.DebugMode then
-                print(
-                    "|cFF00FFFFBotaTools|r: Eating chat suppressed: SAY is blocked outside of instances.")
-            end
+            BOTA:DebugLog("Eating chat suppressed: SAY is blocked outside of instances.")
         else
-            if BOTA.DebugMode then
-                print(
-                    "|cFF00FFFFBotaTools|r: Eating chat suppressed: In combat or messaging lockdown.")
-            end
+            BOTA:DebugLog("Eating chat suppressed: In combat or messaging lockdown.")
         end
         return
     end
@@ -365,11 +356,11 @@ function BOTA.Eating:OnTabShown(tabFrame)
                 BOTASV.Eating.spellIDs[id] = true
                 local spellInfo = C_Spell.GetSpellInfo(id)
                 local name = spellInfo and spellInfo.name or tostring(id)
-                print("|cFF00FFFFBotaTools|r: Added spell ID trigger: " .. name .. " (" .. id .. ")")
+                print("|cFFD90B4FBotaTools|r: Added spell ID trigger: " .. name .. " (" .. id .. ")")
             else
                 -- Treat as name
                 BOTASV.Eating.spellIDs[value] = true
-                print("|cFF00FFFFBotaTools|r: Added aura name trigger: " .. value)
+                print("|cFFD90B4FBotaTools|r: Added aura name trigger: " .. value)
             end
             addIDEntry:SetText("")
             self.managementList:Refresh()
@@ -388,7 +379,7 @@ function BOTA.Eating:OnTabShown(tabFrame)
                 if self.displayList and self.displayList[index] then
                     local id = self.displayList[index]
                     BOTASV.Eating.spellIDs[id] = nil
-                    print("|cFF00FFFFBotaTools|r: Removed spell trigger ID: " .. id)
+                    print("|cFFD90B4FBotaTools|r: Removed spell trigger ID: " .. id)
 
                     self.managementList:Refresh()
                 end

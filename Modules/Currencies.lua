@@ -85,22 +85,15 @@ end
 function BOTA.Currencies:OnCommReceived(prefix, message, distribution, sender)
     if prefix ~= "BotaCurrencies" then return end
 
-    if BOTA.DebugMode then
-        print("|cFF00FFFFBotaTools|r: [Currencies] OnCommReceived from " ..
-            tostring(sender) .. " (" .. tostring(distribution) .. ")")
-    end
+    BOTA:DebugLog("[Currencies] OnCommReceived from " .. tostring(sender) .. " (" .. tostring(distribution) .. ")")
 
     local success, msgType, data = AceSerializer:Deserialize(message)
     if not success then
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Currencies] Failed to deserialize message from " .. tostring(sender))
-        end
+        BOTA:DebugLog("[Currencies] Failed to deserialize message from " .. tostring(sender))
         return
     end
 
-    if BOTA.DebugMode then
-        print("|cFF00FFFFBotaTools|r: [Currencies] Message Type: " .. tostring(msgType))
-    end
+    BOTA:DebugLog("[Currencies] Message Type: " .. tostring(msgType))
 
     if msgType == "REQ_STATUS" then
         self:SendStatus(distribution, sender, data)
@@ -137,14 +130,10 @@ function BOTA.Currencies:SendStatus(distribution, target, requestedList)
 
     if IsInGroup() then
         local channel = IsInRaid() and "RAID" or "PARTY"
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Currencies] Sending RESP_STATUS to channel: " .. channel)
-        end
+        BOTA:DebugLog("[Currencies] Sending RESP_STATUS to channel: " .. channel)
         AceComm:SendCommMessage("BotaCurrencies", serialized, channel)
     elseif target then
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Currencies] Sending RESP_STATUS to target: " .. tostring(target))
-        end
+        BOTA:DebugLog("[Currencies] Sending RESP_STATUS to target: " .. tostring(target))
         AceComm:SendCommMessage("BotaCurrencies", serialized, "WHISPER", target)
     end
 end
@@ -159,9 +148,7 @@ function BOTA.Currencies:ScanRaid()
 
     if IsInGroup() then
         local channel = IsInRaid() and "RAID" or "PARTY"
-        if BOTA.DebugMode then
-            print("|cFF00FFFFBotaTools|r: [Currencies] Sending REQ_STATUS to channel: " .. channel)
-        end
+        BOTA:DebugLog("[Currencies] Sending REQ_STATUS to channel: " .. channel)
         AceComm:SendCommMessage("BotaCurrencies", serialized, channel)
     else
         -- Self-test
