@@ -14,26 +14,6 @@ function BOTA.Changelog:CreateFrame()
     f:SetFrameStrata("DIALOG")
     f:SetPoint("CENTER")
 
-    local scrollParams = {
-        width = 460,
-        height = 320,
-        line_height = 14,
-        read_only = true,
-        bg_color = { 0, 0, 0, 0.4 },
-    }
-
-    local editor = DF:NewSpecialLuaEditorEntry(f, 460, 320, "Editor", "BotaChangelogEditor", true)
-    editor:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -30)
-    editor:SetText(self:GetChangelogText())
-    editor:EnableMouse(false) -- Make it read-only-ish by not focusing? DF Editor is usually editable.
-    -- Actually, DF doesn't have a simple multi-line label with scroll.
-    -- Let's use a standard scroll frame with a font string if DF's editor is too heavy/editable.
-    -- But for now, let's try to just disable the editbox part if possible, or just let them edit it (it won't save).
-    -- Better yet, let's just use a simple HTML frame or similar.
-
-    -- Re-implementing with simple ScrollFrame + FontString for read-only text
-    editor:Hide() -- Hide the editor we just made
-
     local scrollFrame = CreateFrame("ScrollFrame", "$parentScroll", f, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", 10, -30)
     scrollFrame:SetPoint("BOTTOMRIGHT", -30, 40)
@@ -45,7 +25,7 @@ function BOTA.Changelog:CreateFrame()
     end
 
     local content = CreateFrame("Frame", nil, scrollFrame)
-    content:SetSize(460, 1000)
+    content:SetSize(460, 10) -- Height updated below
     scrollFrame:SetScrollChild(content)
 
     local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -53,6 +33,14 @@ function BOTA.Changelog:CreateFrame()
     text:SetWidth(450)
     text:SetJustifyH("LEFT")
     text:SetText(self:GetChangelogText())
+
+    -- Dynamic Resizing: Calculate height based on content
+    local contentHeight = text:GetStringHeight()
+    content:SetHeight(contentHeight + 10)
+
+    local targetHeight = contentHeight + 80 -- 30 (header) + 40 (footer) + 10 (padding)
+    targetHeight = math.max(200, math.min(600, targetHeight))
+    f:SetHeight(targetHeight)
 
     -- Add Close Button
     local closeButton = DF:CreateButton(f, function() f:Hide() end, 100, 20, "Close", nil, nil, nil, nil, nil, true)
@@ -73,8 +61,13 @@ function BOTA.Changelog:Init()
 
     if not BOTASV then BOTASV = {} end
 
+    BOTA:DebugLog("[Changelog] Init. Last: " .. tostring(BOTASV.lastVersion) .. " Current: " .. tostring(currentVersion))
+
     if BOTASV.lastVersion ~= currentVersion then
-        self:Show()
+        BOTA:DebugLog("[Changelog] Version mismatch, showing frame (delayed).")
+        C_Timer.After(3, function()
+            self:Show()
+        end)
         BOTASV.lastVersion = currentVersion
     end
 end

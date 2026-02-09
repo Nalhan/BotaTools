@@ -16,6 +16,7 @@ SlashCmdList["BOTA"] = function(msg, editbox)
         return
     elseif command == "debug" then
         BOTA.DebugMode = not BOTA.DebugMode
+        BOTASV.DebugMode = BOTA.DebugMode
         print("|cFFD90B4FBotaTools|r: Debug Mode " ..
             (BOTA.DebugMode and "|cff00ff00Enabled|r" or "|cffff0000Disabled|r"))
         return

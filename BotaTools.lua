@@ -48,6 +48,9 @@ function BOTA:Init()
         BOTASV = {}
     end
 
+    -- Persistent Debug Mode
+    self.DebugMode = BOTASV.DebugMode or false
+
     -- Initialize modules
     if BOTA.Eating and BOTA.Eating.Enable then BOTA.Eating:Enable() end
     if BOTA.Consumables and BOTA.Consumables.Enable then BOTA.Consumables:Enable() end
