@@ -43,16 +43,26 @@ jobs:
           fi
           
           CLEAN_COMMITS=$(echo "$COMMITS" | grep -v "Bump version" | grep -v "Merge pull request" | grep -v "Update ChangelogData" || echo "- No significant changes.")
-          CHANGELOG_BODY="|cFF00FFFFBotaTools $NEW_VER|r\n\n$CLEAN_COMMITS"
+          NEW_CHANGELOG="|cFF00FFFFBotaTools $NEW_VER|r\n\n$CLEAN_COMMITS"
           
-          # 3. Update Data.lua
+          # 3. Handle Retention (Keep last 3 versions)
+          # Extract current content of the [[ ]] block
+          sed -n '/BOTA.ChangelogData = \[\[/,/\]\]/p' Data.lua | sed '1d;$d' > old_changelog.txt
+          
+          # Combine new and old
+          echo -e "$NEW_CHANGELOG\n" > combined_changelog.txt
+          cat old_changelog.txt >> combined_changelog.txt
+          
+          # Truncate to last 3 versions using awk
+          awk '/\|cFF00FFFFBotaTools v/ {count++} count > 3 {exit} {print}' combined_changelog.txt > final_changelog.txt
+          
+          # Write back to Data.lua
           sed -i '/BOTA.ChangelogData = \[\[/,$d' Data.lua
-          echo "" >> Data.lua
           echo "BOTA.ChangelogData = [[" >> Data.lua
-          echo -e "$CHANGELOG_BODY" >> Data.lua
+          cat final_changelog.txt >> Data.lua
           echo "]]" >> Data.lua
 
-          # 4. Set output for release body (handling multiline)
+          # 4. Set output for release body (only the new version part)
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
           echo "body<<$EOF" >> $GITHUB_OUTPUT
           echo -e "$CLEAN_COMMITS" >> $GITHUB_OUTPUT
