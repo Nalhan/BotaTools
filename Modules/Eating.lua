@@ -8,6 +8,7 @@ BOTA.Eating = BOTA.Eating or {}
 
 -- Local state
 local isEating = false
+local cachedIsGuildGroup = false
 
 -- Default settings
 local defaults = {
@@ -39,25 +40,39 @@ function BOTA.Eating:ResetDefaults()
 end
 
 -- Helper to check if the group constitutes a "Guild Group"
-function BOTA.Eating:IsGuildGroup()
-    local guildName = GetGuildInfo("player")
-    if not guildName then return false end
+function BOTA.Eating:UpdateGuildGroupCache()
+    local guildName, _, _, _ = GetGuildInfo("player")
+    if not guildName then
+        cachedIsGuildGroup = false
+        return
+    end
 
     local prefix = IsInRaid() and "raid" or "party"
     local count = GetNumGroupMembers()
 
-    if count <= 1 then return false end -- Solo is not a group
+    if count <= 1 then
+        cachedIsGuildGroup = false
+        return
+    end -- Solo is not a group
 
+    local guildCount = 1
     for i = 1, count - 1 do
-        local unit = prefix .. i
-        if unit ~= "player" then
-            local unitGuild = GetGuildInfo(unit)
-            if unitGuild == guildName then
-                return true
-            end
+        if GetGuildInfo(prefix .. i) == guildName then
+            guildCount = guildCount + 1
         end
     end
-    return false
+
+    cachedIsGuildGroup = guildCount >= (count * 0.8)
+
+    if BOTA.DebugMode then
+        print(
+            "|cFF00FFFFBotaTools|r: Guild group cache updated: " ..
+            guildCount .. "/" .. count .. " (" .. (cachedIsGuildGroup and "Guild Group" or "Not a Guild Group") .. ")")
+    end
+end
+
+function BOTA.Eating:IsGuildGroup()
+    return cachedIsGuildGroup
 end
 
 function BOTA.Eating:SayRandomLine()
@@ -131,15 +146,23 @@ end
 function BOTA.Eating:Enable()
     self:InitSavedVars()
 
-    -- Register for UNIT_AURA events
+    -- Register for events
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("UNIT_AURA")
+    frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+    frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+
     frame:SetScript("OnEvent", function(_, event, unit)
         if event == "UNIT_AURA" then
             BOTA.Eating:OnUnitAura(unit)
+        elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
+            BOTA.Eating:UpdateGuildGroupCache()
         end
     end)
     self.eventFrame = frame
+
+    -- Initial cache update
+    self:UpdateGuildGroupCache()
 end
 
 function BOTA.Eating:GetWeightColor(weight)
@@ -206,39 +229,6 @@ function BOTA.Eating:BuildOptions()
             type = "label",
             get = function() return "Aura Triggers" end,
             text_template = DF:GetTemplate("font", "ORANGE_FONT_TEMPLATE"),
-        },
-
-        -- Add Spell ID Input
-        {
-            type = "textentry",
-            name = "Add Aura (Name or ID)",
-            desc = "Enter a numeric spell ID or a exact aura name to add as a trigger. Press Enter to add.",
-            get = function() return addSpellInput end,
-            set = function(self, fixedparam, value)
-                addSpellInput = value
-            end,
-            hooks = {
-                OnEnterPressed = function(self)
-                    local value = addSpellInput:trim()
-                    if value == "" then return end
-
-                    local id = tonumber(value)
-                    if id then
-                        BOTASV.Eating.spellIDs[id] = true
-                        local spellInfo = C_Spell.GetSpellInfo(id)
-                        local name = spellInfo and spellInfo.name or tostring(id)
-                        print("|cFF00FFFFBotaTools|r: Added spell ID trigger: " .. name .. " (" .. id .. ")")
-                    else
-                        -- Treat as name
-                        BOTASV.Eating.spellIDs[value] = true
-                        print("|cFF00FFFFBotaTools|r: Added aura name trigger: " .. value)
-                    end
-                    addSpellInput = ""
-                    if BOTA.Eating.managementList then
-                        BOTA.Eating.managementList:Refresh()
-                    end
-                end
-            },
             spacement = true,
         },
     }
@@ -357,6 +347,42 @@ function BOTA.Eating:OnTabShown(tabFrame)
 
     -- Create Management List
     if not self.managementList then
+        -- Add ID Section (directly above list)
+        local addIDLabel = tabFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        addIDLabel:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 10, -230)
+        addIDLabel:SetText("Add Aura (Name or ID):")
+
+        local addIDEntry = DF:CreateTextEntry(tabFrame, function() end, 140, 20, "AddAuraEntry", nil, nil,
+            DF:GetTemplate("button", "OPTIONS_BUTTON_TEMPLATE"))
+        addIDEntry:SetPoint("LEFT", addIDLabel, "RIGHT", 5, 0)
+
+        local funcAddAura = function()
+            local value = addIDEntry:GetText():trim()
+            if value == "" then return end
+
+            local id = tonumber(value)
+            if id then
+                BOTASV.Eating.spellIDs[id] = true
+                local spellInfo = C_Spell.GetSpellInfo(id)
+                local name = spellInfo and spellInfo.name or tostring(id)
+                print("|cFF00FFFFBotaTools|r: Added spell ID trigger: " .. name .. " (" .. id .. ")")
+            else
+                -- Treat as name
+                BOTASV.Eating.spellIDs[value] = true
+                print("|cFF00FFFFBotaTools|r: Added aura name trigger: " .. value)
+            end
+            addIDEntry:SetText("")
+            self.managementList:Refresh()
+        end
+
+        addIDEntry:SetHook("OnEnterPressed", funcAddAura)
+
+        local addButton = DF:CreateButton(tabFrame, funcAddAura, 20, 20)
+        addButton:SetPoint("LEFT", addIDEntry, "RIGHT", 4, 0)
+        addButton:SetNormalTexture("Interface\\Buttons\\UI-PlusButton-Up")
+        addButton:SetPushedTexture("Interface\\Buttons\\UI-PlusButton-Down")
+        addButton:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
+
         local callbacks = {
             OnRemove = function(index)
                 if self.displayList and self.displayList[index] then
@@ -409,7 +435,12 @@ function BOTA.Eating:OnTabShown(tabFrame)
             for id in pairs(BOTASV.Eating.spellIDs or {}) do
                 table.insert(self.displayList, id)
             end
-            table.sort(self.displayList)
+            table.sort(self.displayList, function(a, b)
+                if type(a) ~= type(b) then
+                    return type(a) < type(b)
+                end
+                return a < b
+            end)
             oldRefresh(f)
         end
 
