@@ -26,6 +26,11 @@ SlashCmdList["BOTA"] = function(msg, editbox)
 
         print("|cFF00FFFFBotaTools|r: All settings have been reset to default.")
         return
+    elseif command == "changelog" then
+        if BOTA.Changelog and BOTA.Changelog.Show then
+            BOTA.Changelog:Show()
+        end
+        return
     end
 
     -- Default to opening config

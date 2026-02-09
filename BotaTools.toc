@@ -19,6 +19,7 @@ Modules/Eating.lua
 Modules/Consumables.lua
 Modules/Currencies.lua
 Modules/Enchants.lua
+Modules/Changelog.lua
 
 # Utilities
 Utils.lua

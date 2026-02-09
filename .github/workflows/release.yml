@@ -46,6 +46,60 @@ jobs:
           git add BotaTools.toc
           git commit -m "Bump version to ${{ steps.versioning.outputs.new_version }} [skip ci]"
           git push
+          
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 ${{ steps.versioning.outputs.new_version }}^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag found. Getting all commits."
+            COMMITS=$(git log --pretty=format:"- %s" ${{ steps.versioning.outputs.new_version }})
+          else
+            echo "Previous tag: $PREV_TAG"
+            COMMITS=$(git log --pretty=format:"- %s" $PREV_TAG..${{ steps.versioning.outputs.new_version }})
+          fi
+          
+          # Format for Lua: Escape appropriate characters if needed, but for now simple string
+          # We will wrap it in [[ ]] but need to be careful about nesting.
+          # Let's clean up commits: Remove merge commits, filter out "Bump version"
+          CLEAN_COMMITS=$(echo "$COMMITS" | grep -v "Bump version" | grep -v "Merge pull request")
+          
+          echo "Generated Changelog:"
+          echo "$CLEAN_COMMITS"
+          
+          # Construct the lua content to append
+          # We need to preserve newlines.
+          
+          CHANGELOG_TEXT="|cFF00FFFFBotaTools ${{ steps.versioning.outputs.new_version }}|r\n\n$CLEAN_COMMITS"
+          
+          # Write to a temporary file to handle multiline safely
+          echo -e "$CHANGELOG_TEXT" > changelog.txt
+          
+          # Update Data.lua
+          # We remove the old BOTA.ChangelogData = ... block and append the new one
+          # Since BOTA.ChangelogData is at the end, we can just strip it and append.
+          # Or safer: use sed to replace everything from BOTA.ChangelogData down.
+          
+          sed -i '/BOTA.ChangelogData = \[\[/,$d' Data.lua
+          
+          echo "" >> Data.lua
+          echo "BOTA.ChangelogData = [[" >> Data.lua
+          cat changelog.txt >> Data.lua
+          echo "]]" >> Data.lua
+          
+          # Set output for release body
+          # Multiline output for GITHUB_OUTPUT
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "body<<$EOF" >> $GITHUB_OUTPUT
+          cat changelog.txt >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+          
+          # Commit Data.lua
+          git add Data.lua
+          git commit -m "Update ChangelogData [skip ci]"
+          git push
 
       - name: Package Addon
         run: |
@@ -63,8 +117,7 @@ jobs:
           tag_name: ${{ steps.versioning.outputs.new_version }}
           name: Release ${{ steps.versioning.outputs.new_version }}
           body: |
-            ## Patch Notes
-            ${{ inputs.notes }}
+            ${{ steps.changelog.outputs.body }}
 
             ## Details
             - Version: ${{ steps.versioning.outputs.new_version }}

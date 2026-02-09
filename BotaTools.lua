@@ -47,6 +47,7 @@ function BOTA:Init()
     if BOTA.Consumables and BOTA.Consumables.Enable then BOTA.Consumables:Enable() end
     if BOTA.Currencies and BOTA.Currencies.Enable then BOTA.Currencies:Enable() end
     if BOTA.Enchants and BOTA.Enchants.Enable then BOTA.Enchants:Enable() end
+    if BOTA.Changelog and BOTA.Changelog.Init then BOTA.Changelog:Init() end
 
     -- Initialize the config UI
     if BOTA.ConfigUI and BOTA.ConfigUI.Init then
