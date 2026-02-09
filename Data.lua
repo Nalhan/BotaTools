@@ -155,6 +155,16 @@ BOTA.OfficialLines = {
 
 
 BOTA.ChangelogData = [[
+|cFF00FFFFBotaTools v12|r
+
+|cFFFFFF00Release Notes:|r
+does it work???
+
+|cFF00FFFFCommits:|r
+- [9694f9c] fix alignment in config scrollboxes (Nathan Park)
+- [818c256] some refactoring and workflow updates (Nathan Park)
+- [ea5982e] update gh workflow to add manual release notes (Nathan Park)
+
 |cFF00FFFFBotaTools v11|r
 
 - changelog fixes
