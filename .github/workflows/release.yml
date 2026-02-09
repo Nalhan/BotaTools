@@ -17,93 +17,58 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-      - name: Update Version and TOC
-        id: versioning
+      - name: Update Version and Changelog
+        id: release_prep
         run: |
-          # Robust extraction: look for line starting with ## Version: and grab the value
+          # 1. Update Version in TOC
           RAW_VER=$(grep "^## Version:" BotaTools.toc | sed -E 's/## Version:[[:space:]]*//' | xargs)
-          echo "Current raw version: '$RAW_VER'"
-          
           if [[ $RAW_VER =~ ^v?([0-9]+)$ ]]; then
             VER_NUM=${BASH_REMATCH[1]}
             NEW_VER="v$((VER_NUM + 1))"
           else
-            echo "Warning: Could not parse version '$RAW_VER'. Defaulting to v1."
             NEW_VER="v1"
           fi
-          
-          # Update TOC file
           sed -i -E "s/^## Version:[[:space:]]*.*/## Version: $NEW_VER/" BotaTools.toc
-          
           echo "new_version=$NEW_VER" >> $GITHUB_OUTPUT
-          echo "Successfully updated version to $NEW_VER"
+
+          # 2. Generate Changelog
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s")
+          else
+            COMMITS=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD)
+          fi
+          
+          CLEAN_COMMITS=$(echo "$COMMITS" | grep -v "Bump version" | grep -v "Merge pull request" | grep -v "Update ChangelogData" || echo "- No significant changes.")
+          CHANGELOG_BODY="|cFF00FFFFBotaTools $NEW_VER|r\n\n$CLEAN_COMMITS"
+          
+          # 3. Update Data.lua
+          sed -i '/BOTA.ChangelogData = \[\[/,$d' Data.lua
+          echo "" >> Data.lua
+          echo "BOTA.ChangelogData = [[" >> Data.lua
+          echo -e "$CHANGELOG_BODY" >> Data.lua
+          echo "]]" >> Data.lua
+
+          # 4. Set output for release body (handling multiline)
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "body<<$EOF" >> $GITHUB_OUTPUT
+          echo -e "$CLEAN_COMMITS" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
 
       - name: Commit and Push
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add BotaTools.toc
-          git commit -m "Bump version to ${{ steps.versioning.outputs.new_version }} [skip ci]"
-          git push
-          
-      - name: Generate Changelog
-        id: changelog
-        run: |
-          # Get previous tag
-          PREV_TAG=$(git describe --tags --abbrev=0 ${{ steps.versioning.outputs.new_version }}^ 2>/dev/null || echo "")
-          
-          if [ -z "$PREV_TAG" ]; then
-            echo "No previous tag found. Getting all commits."
-            COMMITS=$(git log --pretty=format:"- %s" ${{ steps.versioning.outputs.new_version }})
-          else
-            echo "Previous tag: $PREV_TAG"
-            COMMITS=$(git log --pretty=format:"- %s" $PREV_TAG..${{ steps.versioning.outputs.new_version }})
-          fi
-          
-          # Format for Lua: Escape appropriate characters if needed, but for now simple string
-          # We will wrap it in [[ ]] but need to be careful about nesting.
-          # Let's clean up commits: Remove merge commits, filter out "Bump version"
-          CLEAN_COMMITS=$(echo "$COMMITS" | grep -v "Bump version" | grep -v "Merge pull request")
-          
-          echo "Generated Changelog:"
-          echo "$CLEAN_COMMITS"
-          
-          # Construct the lua content to append
-          # We need to preserve newlines.
-          
-          CHANGELOG_TEXT="|cFF00FFFFBotaTools ${{ steps.versioning.outputs.new_version }}|r\n\n$CLEAN_COMMITS"
-          
-          # Write to a temporary file to handle multiline safely
-          echo -e "$CHANGELOG_TEXT" > changelog.txt
-          
-          # Update Data.lua
-          # We remove the old BOTA.ChangelogData = ... block and append the new one
-          # Since BOTA.ChangelogData is at the end, we can just strip it and append.
-          # Or safer: use sed to replace everything from BOTA.ChangelogData down.
-          
-          sed -i '/BOTA.ChangelogData = \[\[/,$d' Data.lua
-          
-          echo "" >> Data.lua
-          echo "BOTA.ChangelogData = [[" >> Data.lua
-          cat changelog.txt >> Data.lua
-          echo "]]" >> Data.lua
-          
-          # Set output for release body
-          # Multiline output for GITHUB_OUTPUT
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "body<<$EOF" >> $GITHUB_OUTPUT
-          cat changelog.txt >> $GITHUB_OUTPUT
-          echo "$EOF" >> $GITHUB_OUTPUT
-          
-          # Commit Data.lua
-          git add Data.lua
-          git commit -m "Update ChangelogData [skip ci]"
+          git add BotaTools.toc Data.lua
+          git commit -m "Release ${{ steps.release_prep.outputs.new_version }} [skip ci]"
           git push
 
       - name: Package Addon
         run: |
-          ZIP_NAME="BotaTools-${{ steps.versioning.outputs.new_version }}.zip"
+          ZIP_NAME="BotaTools-${{ steps.release_prep.outputs.new_version }}.zip"
           mkdir BotaTools
           cp *.lua *.toc BotaTools/
           cp -r Modules BotaTools/
@@ -114,12 +79,12 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.versioning.outputs.new_version }}
-          name: Release ${{ steps.versioning.outputs.new_version }}
+          tag_name: ${{ steps.release_prep.outputs.new_version }}
+          name: Release ${{ steps.release_prep.outputs.new_version }}
           body: |
-            ${{ steps.changelog.outputs.body }}
+            ${{ steps.release_prep.outputs.body }}
 
             ## Details
-            - Version: ${{ steps.versioning.outputs.new_version }}
-          files: BotaTools-${{ steps.versioning.outputs.new_version }}.zip
-          generate_release_notes: true
+            - Version: ${{ steps.release_prep.outputs.new_version }}
+          files: BotaTools-${{ steps.release_prep.outputs.new_version }}.zip
+          generate_release_notes: false
