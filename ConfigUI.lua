@@ -36,11 +36,12 @@ function BOTA.ConfigUI:Init()
     BOTASV.UI = BOTASV.UI or panel_options
 
     -- Create BaseFrame
-    BaseFrame = DF:CreateSimplePanel(UIParent, window_width, window_height, "|cFF00FFFFBota|rTools", "BOTAMainFrame",
+    BaseFrame = DF:CreateSimplePanel(UIParent, window_width, window_height, "|cFFD90B4FBotaTools|r", "BOTAMainFrame",
         BOTASV.UI)
     BaseFrame:SetPoint("CENTER")
     BaseFrame:SetFrameStrata("HIGH")
-    DF:BuildStatusbarAuthorInfo(BaseFrame.StatusBar, _, "bota")
+    DF:BuildStatusbarAuthorInfo(BaseFrame.StatusBar, _, " by a piece of bread")
+    BaseFrame.StatusBar.discordTextEntry:SetText("https://discord.gg/fNM8Rhm")
     DF:CreateScaleBar(BaseFrame, BOTASV.UI)
     BaseFrame:SetScale(BOTASV.UI.scale or 1.0)
     BaseFrame:Hide()
