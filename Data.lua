@@ -155,6 +155,12 @@ BOTA.OfficialLines = {
 
 
 BOTA.ChangelogData = [[
+|cFF00FFFFBotaTools v11|r
+
+- changelog fixes
+- refactor debug logging
+- update github workflow
+
 |cFF00FFFFBotaTools v10|r
 
 - fix workflow

@@ -2,7 +2,7 @@
 ## Title: BotaTools
 ## Notes: A collection of tools for the bota
 ## Author: Bota
-## Version: v10
+## Version: v11
 ## SavedVariables: BOTASV
 
 # Libraries
