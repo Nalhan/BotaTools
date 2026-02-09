@@ -85,21 +85,35 @@ end
 function BOTA.Currencies:OnCommReceived(prefix, message, distribution, sender)
     if prefix ~= "BotaCurrencies" then return end
 
+    if BOTA.DebugMode then
+        print("|cFF00FFFFBotaTools|r: [Currencies] OnCommReceived from " ..
+            tostring(sender) .. " (" .. tostring(distribution) .. ")")
+    end
+
     local success, msgType, data = AceSerializer:Deserialize(message)
-    if not success then return end
+    if not success then
+        if BOTA.DebugMode then
+            print("|cFF00FFFFBotaTools|r: [Currencies] Failed to deserialize message from " .. tostring(sender))
+        end
+        return
+    end
+
+    if BOTA.DebugMode then
+        print("|cFF00FFFFBotaTools|r: [Currencies] Message Type: " .. tostring(msgType))
+    end
 
     if msgType == "REQ_STATUS" then
-        self:SendStatus(distribution, sender)
+        self:SendStatus(distribution, sender, data)
     elseif msgType == "RESP_STATUS" then
         self.scanResults[sender] = data
         self:RefreshTable()
     end
 end
 
-function BOTA.Currencies:SendStatus(distribution, target)
+function BOTA.Currencies:SendStatus(distribution, target, requestedList)
     self:InitSavedVars()
     local results = {}
-    local tracked = BOTASV.Currencies.trackedList or {}
+    local tracked = requestedList or BOTASV.Currencies.trackedList or {}
 
     for _, currencyId in ipairs(tracked) do
         local info = C_CurrencyInfo.GetCurrencyInfo(currencyId)
@@ -123,8 +137,14 @@ function BOTA.Currencies:SendStatus(distribution, target)
 
     if IsInGroup() then
         local channel = IsInRaid() and "RAID" or "PARTY"
+        if BOTA.DebugMode then
+            print("|cFF00FFFFBotaTools|r: [Currencies] Sending RESP_STATUS to channel: " .. channel)
+        end
         AceComm:SendCommMessage("BotaCurrencies", serialized, channel)
     elseif target then
+        if BOTA.DebugMode then
+            print("|cFF00FFFFBotaTools|r: [Currencies] Sending RESP_STATUS to target: " .. tostring(target))
+        end
         AceComm:SendCommMessage("BotaCurrencies", serialized, "WHISPER", target)
     end
 end
@@ -133,10 +153,15 @@ function BOTA.Currencies:ScanRaid()
     self:InitSavedVars()
     wipe(self.scanResults)
     self:RefreshTable()
-    local serialized = AceSerializer:Serialize("REQ_STATUS", nil)
+
+    local trackedList = BOTASV.Currencies.trackedList or {}
+    local serialized = AceSerializer:Serialize("REQ_STATUS", trackedList)
 
     if IsInGroup() then
         local channel = IsInRaid() and "RAID" or "PARTY"
+        if BOTA.DebugMode then
+            print("|cFF00FFFFBotaTools|r: [Currencies] Sending REQ_STATUS to channel: " .. channel)
+        end
         AceComm:SendCommMessage("BotaCurrencies", serialized, channel)
     else
         -- Self-test
