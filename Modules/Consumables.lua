@@ -444,6 +444,7 @@ function BOTA.Consumables:BuildOptions()
             get = function() return "Manage Tracked Items" end,
             text_template = DF:GetTemplate("font", "ORANGE_FONT_TEMPLATE"),
             spacement = true,
+            id = "ManageTrackedItemsLabel",
         },
     }
 end
@@ -463,7 +464,12 @@ function BOTA.Consumables:OnTabShown(tabFrame)
     if not self.managementList then
         -- Add ID Section (directly above list)
         local addIDLabel = tabFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        addIDLabel:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 10, -260)
+        local header = tabFrame.widgetids and tabFrame.widgetids["ManageTrackedItemsLabel"]
+        if header then
+            addIDLabel:SetPoint("TOPLEFT", header.widget or header, "BOTTOMLEFT", 0, -10)
+        else
+            addIDLabel:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 10, -190)
+        end
         addIDLabel:SetText("Add Item ID:")
 
         local addIDEntry = DF:CreateTextEntry(tabFrame, function() end, 100, 20, "AddIDEntry", nil, nil,
@@ -535,8 +541,9 @@ function BOTA.Consumables:OnTabShown(tabFrame)
 
         local config = {
             width = 280,
-            height = 250,
             rowHeight = 24,
+            topAnchor = addIDLabel,
+            alignToBottom = self.tableFrame,
             nameProvider = function(id)
                 return (C_Item.GetItemNameByID(id) or ("Item " .. id)) .. " (" .. id .. ")"
             end,
@@ -546,7 +553,6 @@ function BOTA.Consumables:OnTabShown(tabFrame)
         }
 
         self.managementList = BOTA:CreateManagementList(tabFrame, BOTASV.Consumables.trackedList, callbacks, config)
-        self.managementList:SetPoint("TOPLEFT", addIDLabel, "BOTTOMLEFT", 0, -5)
     else
         self.managementList:Refresh()
     end

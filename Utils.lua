@@ -188,11 +188,56 @@ function BOTA:CreateManagementList(parent, items, callbacks, config)
     local height = config.height or 200
 
     local f = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    f:SetSize(width, height)
     DF:ApplyStandardBackdrop(f)
 
-    -- Calculate Line Amount
-    local lineAmount = math.ceil(height / rowHeight) + 2
+    -- Positioning and Sizing
+    if config.topAnchor then
+        f:SetPoint("TOPLEFT", config.topAnchor, "BOTTOMLEFT", 0, -10)
+    else
+        f:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -250)
+    end
+
+    if config.alignToBottom then
+        -- Helper to get Y offset relative to parent by summing anchor chain
+        local function GetRelativeY(frame, stopAt)
+            local yTotal = 0
+            local current = frame
+            while current and current ~= stopAt do
+                local point, relTo, relPoint, x, y = current:GetPoint(1)
+                if not y then break end
+                yTotal = yTotal + y
+
+                -- If we are anchoring our TOP to their BOTTOM, we effectively move down by their height
+                if relTo and (point:find("TOP") and relPoint:find("BOTTOM")) then
+                    yTotal = yTotal - relTo:GetHeight()
+                end
+
+                current = relTo
+            end
+            return yTotal
+        end
+
+        local yTop = GetRelativeY(config.topAnchor, parent)
+        local yBottomAnchor = GetRelativeY(config.alignToBottom, parent)
+        local bottomHeight = config.alignToBottom:GetHeight()
+        local labelHeight = config.topAnchor:GetHeight() or 20
+
+        if yTop and yBottomAnchor and bottomHeight then
+            -- targetBottom is the bottom-most Y coord relative to parent top
+            local targetBottom = yBottomAnchor - bottomHeight
+            -- labelBottom is the bottom of our anchor label relative to parent top
+            local labelBottom = yTop - labelHeight
+            height = math.abs(labelBottom - targetBottom) - 10 -- 10px total gap
+        end
+
+        -- Cap height to something sensible if calculation went wild
+        if height > 500 then height = 300 end
+    end
+
+    local lineAmount = math.floor(height / rowHeight)
+    -- We no longer override height = lineAmount * rowHeight for the outer frame.
+    -- This ensures the backdrop hits the exact calculated bottom target.
+    f:SetSize(width, height)
 
     -- Refresh Function (iterates lines)
     local refreshScroll = function(self, data, offset, totalLines)
@@ -320,6 +365,7 @@ function BOTA:CreateManagementList(parent, items, callbacks, config)
     -- Args: parent, name, refreshFunc, data, width, height, lineAmount, lineHeight
     local scrollBox = DF:CreateScrollBox(f, "$parentScrollBox", refreshScroll, items, width, height, lineAmount,
         rowHeight)
+
     DF:ReskinSlider(scrollBox)
     f.scrollBox = scrollBox
     scrollBox:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)

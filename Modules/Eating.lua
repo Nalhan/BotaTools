@@ -15,8 +15,10 @@ local defaults = {
     enableEatingChat = true,
     onlyGuildGroup = false,
     spellIDs = {
-        -- Well Fed (general food buff)
-        [104273] = true,
+        -- match by name these buffs by default
+        ["Well Fed"] = true,
+        ["Food"] = true,
+        ["Food & Drink"] = true,
     },
 }
 
@@ -221,6 +223,7 @@ function BOTA.Eating:BuildOptions()
             get = function() return "Aura Triggers" end,
             text_template = DF:GetTemplate("font", "ORANGE_FONT_TEMPLATE"),
             spacement = true,
+            id = "AuraTriggersLabel",
         },
     }
 end
@@ -340,7 +343,12 @@ function BOTA.Eating:OnTabShown(tabFrame)
     if not self.managementList then
         -- Add ID Section (directly above list)
         local addIDLabel = tabFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        addIDLabel:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 10, -230)
+        local header = tabFrame.widgetids and tabFrame.widgetids["AuraTriggersLabel"]
+        if header then
+            addIDLabel:SetPoint("TOPLEFT", header.widget or header, "BOTTOMLEFT", 0, -10)
+        else
+            addIDLabel:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 10, -190)
+        end
         addIDLabel:SetText("Add Aura (Name or ID):")
 
         local addIDEntry = DF:CreateTextEntry(tabFrame, function() end, 140, 20, "AddAuraEntry", nil, nil,
@@ -397,8 +405,9 @@ function BOTA.Eating:OnTabShown(tabFrame)
 
         local config = {
             width = 280,
-            height = 250,
             rowHeight = 24,
+            topAnchor = addIDLabel,
+            alignToBottom = self.tableFrame,
             nameProvider = function(id)
                 if type(id) == "number" then
                     local info = C_Spell.GetSpellInfo(id)
@@ -417,7 +426,6 @@ function BOTA.Eating:OnTabShown(tabFrame)
         }
 
         self.managementList = BOTA:CreateManagementList(tabFrame, self.displayList, callbacks, config)
-        self.managementList:SetPoint("TOPLEFT", tabFrame, "TOPLEFT", 10, -250)
 
         -- Hook Refresh to update displayList
         local oldRefresh = self.managementList.Refresh
