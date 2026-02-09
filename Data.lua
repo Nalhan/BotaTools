@@ -161,9 +161,9 @@ BOTA.ChangelogData = [[
 does it work???
 
 |cFF00FFFFCommits:|r
-- [9694f9c] fix alignment in config scrollboxes (Nathan Park)
-- [818c256] some refactoring and workflow updates (Nathan Park)
-- [ea5982e] update gh workflow to add manual release notes (Nathan Park)
+- [9694f9c] fix alignment in config scrollboxes
+- [818c256] some refactoring and workflow updates
+- [ea5982e] update gh workflow to add manual release notes
 
 |cFF00FFFFBotaTools v11|r
 

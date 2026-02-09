@@ -39,9 +39,9 @@ jobs:
           # 2. Generate Changelog
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- [%h] %s (%an)")
+            COMMITS=$(git log --pretty=format:"- [%h] %s")
           else
-            COMMITS=$(git log --pretty=format:"- [%h] %s (%an)" $PREV_TAG..HEAD)
+            COMMITS=$(git log --pretty=format:"- [%h] %s" $PREV_TAG..HEAD)
           fi
           
           CLEAN_COMMITS=$(echo "$COMMITS" | grep -v "Bump version" | grep -v "Merge pull request" | grep -v "Update ChangelogData" || echo "- No significant changes.")
