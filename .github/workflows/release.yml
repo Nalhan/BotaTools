@@ -22,6 +22,8 @@ jobs:
 
       - name: Update Version and Changelog
         id: release_prep
+        env:
+          RELEASE_NOTES: ${{ github.event.inputs.notes }}
         run: |
           # 1. Update Version in TOC
           RAW_VER=$(grep "^## Version:" BotaTools.toc | sed -E 's/## Version:[[:space:]]*//' | xargs)
@@ -37,13 +39,20 @@ jobs:
           # 2. Generate Changelog
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- %s")
+            COMMITS=$(git log --pretty=format:"- [%h] %s (%an)")
           else
-            COMMITS=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD)
+            COMMITS=$(git log --pretty=format:"- [%h] %s (%an)" $PREV_TAG..HEAD)
           fi
           
           CLEAN_COMMITS=$(echo "$COMMITS" | grep -v "Bump version" | grep -v "Merge pull request" | grep -v "Update ChangelogData" || echo "- No significant changes.")
-          NEW_CHANGELOG="|cFF00FFFFBotaTools $NEW_VER|r\n\n$CLEAN_COMMITS"
+          
+          # Prepare format for manual notes
+          MANUAL_NOTES=""
+          if [ -n "$RELEASE_NOTES" ]; then
+            MANUAL_NOTES="|cFFFFFF00Release Notes:|r\n$RELEASE_NOTES\n\n|cFF00FFFFCommits:|r\n"
+          fi
+
+          NEW_CHANGELOG="|cFF00FFFFBotaTools $NEW_VER|r\n\n${MANUAL_NOTES}$CLEAN_COMMITS"
           
           # 3. Handle Retention (Keep last 3 versions)
           # Extract current content of the [[ ]] block
@@ -65,6 +74,12 @@ jobs:
           # 4. Set output for release body (only the new version part)
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
           echo "body<<$EOF" >> $GITHUB_OUTPUT
+          if [ -n "$RELEASE_NOTES" ]; then
+            echo "## Release Notes" >> $GITHUB_OUTPUT
+            echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "## Commits" >> $GITHUB_OUTPUT
+          fi
           echo -e "$CLEAN_COMMITS" >> $GITHUB_OUTPUT
           echo "$EOF" >> $GITHUB_OUTPUT
 
