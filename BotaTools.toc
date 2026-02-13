@@ -8,6 +8,7 @@
 lib/libs.xml
 
 Data.lua
+LSMRegister.lua
 
 Modules/Eating.lua
 Modules/Consumables.lua
